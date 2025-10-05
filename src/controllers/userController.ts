@@ -49,7 +49,7 @@ export const getAllUsers = async (
 
     const response: PaginatedResponse<Partial<IUser>> = {
       success: true,
-      data: users as Partial<IUser>[],
+      data: users as any,
       pagination: {
         total,
         page: pageNum,
@@ -209,4 +209,3 @@ export const deleteUser = async (
     });
   }
 };
-

@@ -62,7 +62,7 @@ export const getAllProducts = async (
 
     const response: PaginatedResponse<IProduct> = {
       success: true,
-      data: products as IProduct[],
+      data: products as any,
       pagination: {
         total,
         page: pageNum,
