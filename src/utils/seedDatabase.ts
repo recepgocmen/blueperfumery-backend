@@ -48,7 +48,7 @@ const seedUsers = [
   },
 ];
 
-// Admin panel'deki mock products (blueperfumery-admin-panel/src/services/mock-api.ts)
+// Tüm parfümler (mcp-server/src/data.ts)
 const seedProducts = [
   {
     id: "mfk-br540",
@@ -372,4 +372,3 @@ async function seedDatabase() {
 
 // Run seeding
 seedDatabase();
-
