@@ -21,6 +21,8 @@ app.use(
     origin: process.env.CORS_ORIGIN?.split(",") || [
       "http://localhost:3000",
       "http://localhost:5173",
+      "https://blueperfumery.vercel.app",
+      "https://blueperfumery.com",
     ],
     credentials: true,
   })
@@ -72,6 +74,9 @@ const startServer = async () => {
       console.log(`   - POST   /api/users`);
       console.log(`   - PUT    /api/users/:id`);
       console.log(`   - DELETE /api/users/:id`);
+      console.log(`   - POST   /api/agent/chat`);
+      console.log(`   - POST   /api/agent/analyze`);
+      console.log(`   - POST   /api/agent/similar`);
       console.log(`\n✨ Ready to serve requests!\n`);
     });
   } catch (error) {

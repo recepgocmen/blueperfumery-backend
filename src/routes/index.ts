@@ -1,6 +1,7 @@
 import { Router } from "express";
 import productRoutes from "./productRoutes";
 import userRoutes from "./userRoutes";
+import agentRoutes from "./agentRoutes";
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.get("/health", (req, res) => {
 // API routes
 router.use("/products", productRoutes);
 router.use("/users", userRoutes);
+router.use("/agent", agentRoutes);
 
 export default router;
 
