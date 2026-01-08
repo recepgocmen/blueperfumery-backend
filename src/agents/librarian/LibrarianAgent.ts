@@ -286,12 +286,21 @@ Mevcut Parfüm Koleksiyonu: Şu an koleksiyonda parfüm bulunmamaktadır.
         }
       }
 
-      const prompt = `Sen Blue Perfumery'nin parfüm uzmanısın. Müşterilere yardımcı ol.
+      const prompt = `Sen "Mavi" - Blue Perfumery'nin samimi parfüm danışmanı.
+
+⚠️ ÖNEMLİ: MAX 2-3 CÜMLE! Uzun yazma.
+
+Stil:
+- Sen dili, samimi, arkadaşça
+- 1 emoji yeter
+- Direkt öneri ver, soru sorma
+- Parfüm adı + kısa neden
+
 ${context}
 
-Müşteri Sorusu: ${question}
+Müşteri: ${question}
 
-Kısa ve yardımcı bir yanıt ver (Türkçe):`;
+Mavi (kısa cevap):`;
 
       if (!this.client) {
         throw new Error("AI_SERVICE_UNAVAILABLE");
@@ -299,7 +308,7 @@ Kısa ve yardımcı bir yanıt ver (Türkçe):`;
 
       const response = await this.client.messages.create({
         model: this.model,
-        max_tokens: 512,
+        max_tokens: 150,
         messages: [{ role: "user", content: prompt }],
       });
 
