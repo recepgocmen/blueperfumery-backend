@@ -2,6 +2,7 @@ import { Router } from "express";
 import productRoutes from "./productRoutes";
 import userRoutes from "./userRoutes";
 import agentRoutes from "./agentRoutes";
+import chatSessionRoutes from "./chatSessionRoutes";
 
 const router = Router();
 
@@ -18,6 +19,6 @@ router.get("/health", (req, res) => {
 router.use("/products", productRoutes);
 router.use("/users", userRoutes);
 router.use("/agent", agentRoutes);
+router.use("/chat-sessions", chatSessionRoutes);
 
 export default router;
-
