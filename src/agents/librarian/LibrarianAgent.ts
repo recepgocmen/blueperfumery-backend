@@ -38,15 +38,29 @@ export interface PerfumeAnalysis {
 }
 
 export class LibrarianAgent {
-  private client: Anthropic;
+  private client: Anthropic | null = null;
   private model: string = "claude-3-haiku-20240307"; // Hızlı ve ucuz
+  private apiKeyMissing: boolean = false;
 
   constructor() {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      throw new Error("ANTHROPIC_API_KEY bulunamadı!");
+      console.warn(
+        "⚠️ ANTHROPIC_API_KEY bulunamadı! Agent özellikleri devre dışı."
+      );
+      this.apiKeyMissing = true;
+    } else {
+      this.client = new Anthropic({ apiKey });
     }
-    this.client = new Anthropic({ apiKey });
+  }
+
+  /**
+   * API key kontrolü - her metodda kullanılacak
+   */
+  private checkApiKey(): void {
+    if (this.apiKeyMissing || !this.client) {
+      throw new Error("AI_SERVICE_UNAVAILABLE");
+    }
   }
 
   /**
@@ -55,6 +69,8 @@ export class LibrarianAgent {
   async enrichPerfumeProfile(
     perfumeId: string
   ): Promise<EnrichedPerfumeProfile | null> {
+    this.checkApiKey();
+
     const perfume = await Product.findOne({ id: perfumeId });
     if (!perfume) return null;
 
@@ -82,7 +98,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
 }`;
 
     try {
-      const response = await this.client.messages.create({
+      const response = await this.client!.messages.create({
         model: this.model,
         max_tokens: 1024,
         messages: [{ role: "user", content: prompt }],
@@ -111,6 +127,8 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
     perfumeId: string,
     limit: number = 3
   ): Promise<SimilarPerfume[]> {
+    this.checkApiKey();
+
     const perfume = await Product.findOne({ id: perfumeId });
     if (!perfume) return [];
 
@@ -143,7 +161,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON array, başka bir şey yazm
 ]`;
 
     try {
-      const response = await this.client.messages.create({
+      const response = await this.client!.messages.create({
         model: this.model,
         max_tokens: 1024,
         messages: [{ role: "user", content: prompt }],
@@ -163,6 +181,8 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON array, başka bir şey yazm
    * Parfümü analiz eder
    */
   async analyzePerfume(perfumeId: string): Promise<PerfumeAnalysis | null> {
+    this.checkApiKey();
+
     const perfume = await Product.findOne({ id: perfumeId });
     if (!perfume) return null;
 
@@ -183,7 +203,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
 }`;
 
     try {
-      const response = await this.client.messages.create({
+      const response = await this.client!.messages.create({
         model: this.model,
         max_tokens: 1024,
         messages: [{ role: "user", content: prompt }],
@@ -203,57 +223,124 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
    * Serbest metin sorusu sor
    */
   async askAboutPerfume(question: string, perfumeId?: string): Promise<string> {
-    let context = "";
-
-    if (perfumeId) {
-      const perfume = await Product.findOne({ id: perfumeId });
-      if (perfume) {
-        context = `
-Parfüm Bilgisi:
-- İsim: ${perfume.name}
-- Notalar: ${perfume.notes.join(", ")}
-- Karakteristikler: ${perfume.characteristics.join(", ")}
-- Cinsiyet: ${perfume.gender}
-- Fiyat: ${perfume.price} TL
-- Açıklama: ${perfume.description}
-`;
-      }
-    } else {
-      const allPerfumes = await Product.find({ status: "active" });
-      context = `
-Mevcut Parfüm Koleksiyonu:
-${allPerfumes
-  .map(
-    (p) =>
-      `- ${p.name}: ${p.notes.slice(0, 3).join(", ")} | ${p.gender} | ${
-        p.price
-      } TL`
-  )
-  .join("\n")}
-`;
+    try {
+      this.checkApiKey();
+    } catch (error) {
+      // API key kontrolü başarısız
+      throw new Error("AI_SERVICE_UNAVAILABLE");
     }
 
-    const prompt = `Sen Blue Perfumery'nin parfüm uzmanısın. Müşterilere yardımcı ol.
+    let context = "";
+
+    try {
+      if (perfumeId) {
+        const perfume = await Product.findOne({ id: perfumeId });
+        if (perfume) {
+          const notes = Array.isArray(perfume.notes) ? perfume.notes : [];
+          const characteristics = Array.isArray(perfume.characteristics)
+            ? perfume.characteristics
+            : [];
+
+          context = `
+Parfüm Bilgisi:
+- İsim: ${perfume.name || "Bilinmiyor"}
+- Notalar: ${notes.length > 0 ? notes.join(", ") : "Belirtilmemiş"}
+- Karakteristikler: ${
+            characteristics.length > 0
+              ? characteristics.join(", ")
+              : "Belirtilmemiş"
+          }
+- Cinsiyet: ${perfume.gender || "unisex"}
+- Fiyat: ${perfume.price || "N/A"} TL
+- Açıklama: ${perfume.description || "Açıklama yok"}
+`;
+        }
+      } else {
+        // Sadece ilk 50 aktif parfümü al (token limiti için)
+        const allPerfumes = await Product.find({ status: "active" })
+          .limit(50)
+          .select("name notes gender price")
+          .lean();
+
+        if (allPerfumes && allPerfumes.length > 0) {
+          const perfumeList = allPerfumes
+            .map((p) => {
+              const notes = Array.isArray(p.notes) ? p.notes : [];
+              const name = p.name || "İsimsiz";
+              const gender = p.gender || "unisex";
+              const price = p.price || "N/A";
+              const noteStr =
+                notes.length > 0 ? notes.slice(0, 3).join(", ") : "Nota yok";
+              return `- ${name}: ${noteStr} | ${gender} | ${price} TL`;
+            })
+            .join("\n");
+
+          context = `
+Mevcut Parfüm Koleksiyonu (örnekler):
+${perfumeList}
+`;
+        } else {
+          context = `
+Mevcut Parfüm Koleksiyonu: Şu an koleksiyonda parfüm bulunmamaktadır.
+`;
+        }
+      }
+
+      const prompt = `Sen Blue Perfumery'nin parfüm uzmanısın. Müşterilere yardımcı ol.
 ${context}
 
 Müşteri Sorusu: ${question}
 
 Kısa ve yardımcı bir yanıt ver (Türkçe):`;
 
-    try {
+      if (!this.client) {
+        throw new Error("AI_SERVICE_UNAVAILABLE");
+      }
+
       const response = await this.client.messages.create({
         model: this.model,
         max_tokens: 512,
         messages: [{ role: "user", content: prompt }],
       });
 
+      if (!response.content || response.content.length === 0) {
+        console.error("Empty response from AI");
+        return "Üzgünüm, şu an yanıt veremiyorum.";
+      }
+
       const content = response.content[0];
-      if (content.type !== "text") return "Üzgünüm, şu an yanıt veremiyorum.";
+      if (content.type !== "text") {
+        console.error("Unexpected content type:", content.type);
+        return "Üzgünüm, şu an yanıt veremiyorum.";
+      }
 
       return content.text;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Librarian Agent Error:", error);
-      return "Bir hata oluştu. Lütfen tekrar deneyin.";
+      console.error("Error details:", {
+        message: error.message,
+        status: error.status,
+        type: error.type,
+        stack: error.stack,
+      });
+
+      // API key hatası
+      if (
+        error.message === "AI_SERVICE_UNAVAILABLE" ||
+        error.status === 401 ||
+        error.message?.includes("authentication") ||
+        error.message?.includes("API key")
+      ) {
+        throw new Error("AI_SERVICE_UNAVAILABLE");
+      }
+
+      // Rate limit hatası
+      if (error.status === 429) {
+        throw new Error("AI_SERVICE_UNAVAILABLE");
+      }
+
+      // Diğer hatalar
+      throw error;
     }
   }
 }

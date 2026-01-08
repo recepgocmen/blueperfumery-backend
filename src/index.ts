@@ -14,6 +14,9 @@ import { errorHandler, notFound } from "./middleware/errorHandler";
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy (Vercel ve diğer proxy'ler için)
+app.set("trust proxy", true);
+
 // Middleware
 app.use(helmet()); // Security headers
 

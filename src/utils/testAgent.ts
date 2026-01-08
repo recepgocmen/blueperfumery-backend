@@ -1,10 +1,16 @@
 /**
  * Agent Test Script
  * 
- * Librarian Agent'ı test eder
- * Çalıştırmak için: npm run test-agent
+ * ⚠️ DEVRE DIŞI BIRAKILDI
+ * 
+ * Test agent'ları devre dışı bırakıldı.
  */
 
+// Test agent devre dışı
+console.log("⚠️  Test agent devre dışı bırakıldı.");
+process.exit(0);
+
+// Aşağıdaki kod çalışmayacak (yukarıda exit var)
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import { getLibrarianAgent } from "../agents/librarian/LibrarianAgent";
