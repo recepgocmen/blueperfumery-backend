@@ -13,6 +13,9 @@
     "update-perfumes": "ts-node src/utils/updatePerfumeNotes.ts",
     "sync-perfumes": "ts-node src/utils/syncProductionPerfumes.ts",
     "test-agent": "ts-node src/utils/testAgent.ts",
+    "doc": "ts-node src/utils/docAgent.ts",
+    "doc:status": "ts-node src/utils/docAgent.ts status",
+    "doc:search": "ts-node src/utils/docAgent.ts search",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

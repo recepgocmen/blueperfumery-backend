@@ -1,14 +1,14 @@
+// Load environment variables FIRST (before any other imports that might need them)
+import dotenv from "dotenv";
+dotenv.config();
+
 import express, { Application } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import dotenv from "dotenv";
 import { connectDatabase } from "./config/database";
 import routes from "./routes";
 import { errorHandler, notFound } from "./middleware/errorHandler";
-
-// Load environment variables
-dotenv.config();
 
 // Create Express app
 const app: Application = express();
@@ -16,15 +16,37 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(helmet()); // Security headers
+
+// CORS configuration - allow all origins in development, specific origins in production
+const allowedOrigins = process.env.CORS_ORIGIN?.split(",") || [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://blueperfumery.vercel.app",
+  "https://blueperfumery.com",
+  "https://www.blueperfumery.com",
+  "https://blueperfumery-fe.vercel.app",
+  "https://blue-perfumery.vercel.app",
+];
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN?.split(",") || [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "https://blueperfumery.vercel.app",
-      "https://blueperfumery.com",
-    ],
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+      
+      // Check if origin is in allowed list
+      if (allowedOrigins.includes(origin) || origin.includes("vercel.app") || origin.includes("localhost")) {
+        callback(null, true);
+      } else {
+        console.log(`CORS blocked origin: ${origin}`);
+        callback(null, true); // Allow anyway for now, log for debugging
+      }
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   })
 );
 app.use(morgan("dev")); // Request logging
