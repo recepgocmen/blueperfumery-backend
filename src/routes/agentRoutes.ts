@@ -124,7 +124,8 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({
       success: true,
       data: {
-        message: response,
+        message: response.message,
+        recommendedProducts: response.recommendedProducts || [],
         timestamp: new Date().toISOString(),
       },
     });
