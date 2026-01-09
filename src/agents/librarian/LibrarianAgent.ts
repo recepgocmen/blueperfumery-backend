@@ -641,7 +641,10 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
   /**
    * Selamlama kontrolü - samimi sohbet yap
    */
-  private checkGreeting(question: string): {
+  private checkGreeting(
+    question: string,
+    conversationHistory: ConversationMessage[] = []
+  ): {
     isGreeting: boolean;
     response: string;
   } {
@@ -676,15 +679,29 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
     const startsWithGreeting = greetings.some((g) => q.startsWith(g));
     const hasMoreContent = q.length > 15; // Selamlamadan sonra başka içerik var mı
 
+    // Mira daha önce kendini tanıttı mı?
+    const alreadyIntroduced = conversationHistory.length > 0;
+
     if (isOnlyGreeting || (startsWithGreeting && !hasMoreContent)) {
-      // Tanışmaya yönelik samimi cevaplar - hemen parfüm tavsiyesi verme
-      const responses = [
-        "Selam! 💫 Ben Mira. Tanıştığımıza çok memnunum! Bugün nasılsın?",
-        "Merhaba! ✨ Ben Mira, Blue Perfumery'nin parfüm danışmanı. Seni tanımak isterim, ne arıyorsun?",
-        "Hey! 🌟 Hoş geldin! Ben Mira. Sen kimsin, sana nasıl yardımcı olabilirim?",
-        "Selam! 💎 Ben Mira. Seni dinliyorum, bugün nasıl hissediyorsun?",
-        "Merhaba! 🌸 Ben Mira. Seninle sohbet etmek güzel, nasıl yardımcı olabilirim?",
+      // İlk mesajda kendini tanıt, sonrasında tanıtma
+      const firstTimeResponses = [
+        "Selam! 💫 Tanıştığımıza memnun oldum! Bugün nasılsın?",
+        "Merhaba! ✨ Hoş geldin! Seni tanımak isterim, ne arıyorsun?",
+        "Hey! 🌟 Hoş geldin! Sana nasıl yardımcı olabilirim?",
+        "Selam! 💎 Seni dinliyorum, bugün nasıl hissediyorsun?",
+        "Merhaba! 🌸 Seninle sohbet etmek güzel, nasıl yardımcı olabilirim?",
       ];
+
+      const returningResponses = [
+        "Selam! 💫 Nasılsın? Parfüm konusunda yardımcı olabilir miyim?",
+        "Hey! ✨ Bugün nasıl hissediyorsun? Sana özel bir koku bulalım mı?",
+        "Merhaba! 🌟 Tekrar konuşmak güzel! Ne tür bir koku arıyorsun?",
+        "Selam! 💎 Bugün nasılsın? Sana nasıl yardımcı olabilirim?",
+      ];
+
+      const responses = alreadyIntroduced
+        ? returningResponses
+        : firstTimeResponses;
       const randomResponse =
         responses[Math.floor(Math.random() * responses.length)];
 
@@ -709,10 +726,10 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
 
     if (isHowAreYou && q.length < 30) {
       const responses = [
-        "İyiyim, teşekkürler! 💫 Sen nasılsın? Seni biraz tanımak isterim!",
-        "Çok iyiyim! ✨ Sen nasılsın? Bugün enerjin nasıl?",
-        "Harikayım! 🌟 Sen de iyi misin? Biraz sohbet edelim mi?",
-        "Süperim! 💎 Sen nasılsın? Bugün ne hissediyorsun?",
+        "İyiyim, teşekkürler! 💫 Sen nasılsın? Parfüm hakkında konuşalım mı?",
+        "Çok iyiyim! ✨ Sen nasılsın? Bugün nasıl bir koku arıyorsun?",
+        "Harikayım! 🌟 Sen de iyi misin? Sana özel bir koku bulalım mı?",
+        "Süperim! 💎 Sen nasılsın? Bugün hangi tarz parfümler ilgini çekiyor?",
       ];
       const randomResponse =
         responses[Math.floor(Math.random() * responses.length)];
@@ -857,7 +874,35 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
     }
 
     // Parfüm ile alakalı olup olmadığını kontrol et
+    // Selamlamalar da dahil - bunlar konu dışı değil
     const perfumeKeywords = [
+      // Selamlamalar - bunları engelleme
+      "merhaba",
+      "selam",
+      "slm",
+      "mrb",
+      "hey",
+      "hi",
+      "hello",
+      "sa",
+      "selamun",
+      "naber",
+      "nbr",
+      "nasılsın",
+      "nasilsin",
+      "ne haber",
+      "iyi günler",
+      "günaydın",
+      "iyi akşamlar",
+      "teşekkür",
+      "sağol",
+      "tamam",
+      "ok",
+      "evet",
+      "hayır",
+      "yok",
+      "anladım",
+      // Parfüm anahtar kelimeleri
       "parfüm",
       "koku",
       "nota",
@@ -875,12 +920,6 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       "çiçeksi",
       "ferah",
       "oryantal",
-      "merhaba",
-      "selam",
-      "iyi günler",
-      "günaydın",
-      "teşekkür",
-      "sağol",
       "nasıl",
       "ne",
       "hangi",
@@ -949,7 +988,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       return {
         isAllowed: false,
         response:
-          "Hmm, seni tam anlayamadım 🤔 Ben Mira, Blue Perfumery'nin parfüm danışmanıyım. Sana özel bir koku bulmamda yardımcı olabilir miyim?",
+          "Hmm, tam anlayamadım 🤔 Sana nasıl yardımcı olabilirim? Parfüm mü arıyorsun?",
       };
     }
 
@@ -960,7 +999,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         return {
           isAllowed: false,
           response:
-            "Hmm, seni tam anlayamadım 🤔 Ben Mira, Blue Perfumery'nin parfüm danışmanıyım. Parfüm hakkında bir sorun varsa yardımcı olmaktan mutluluk duyarım!",
+            "Anladım 🤔 Parfüm konusunda yardımcı olabilirim! Erkek mi kadın mı parfümü arıyorsun?",
         };
       }
 
@@ -969,7 +1008,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         return {
           isAllowed: false,
           response:
-            "Ben Blue Perfumery'nin parfüm danışmanıyım 🌸 Sadece parfüm ve koku konularında yardımcı olabilirim. Sana özel bir koku bulmamı ister misin?",
+            "Parfüm ve koku konularında yardımcı olabilirim 🌸 Sana özel bir koku bulmamı ister misin?",
         };
       }
 
@@ -978,7 +1017,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         return {
           isAllowed: false,
           response:
-            "Ben Mira, parfüm konularında uzmanım 💎 Bu konuda yardımcı olamam ama sana harika bir koku bulmak için buradayım! Ne tür parfümler ilgini çekiyor?",
+            "Parfüm konusunda yardımcı olabilirim 💎 Ne tür parfümler ilgini çekiyor?",
         };
       }
     }
@@ -1529,15 +1568,13 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       // 2. Sohbet sayısını kontrol et
       const messageCount = conversationHistory.length;
 
-      // 3. İlk mesaj veya selamlama kontrolü
-      if (messageCount === 0) {
-        const greetingCheck = this.checkGreeting(question);
-        if (greetingCheck.isGreeting) {
-          return {
-            message: greetingCheck.response,
-            userProfile,
-          };
-        }
+      // 3. Selamlama kontrolü - her mesajda kontrol et (satış temsilcisi gibi davran)
+      const greetingCheck = this.checkGreeting(question, conversationHistory);
+      if (greetingCheck.isGreeting) {
+        return {
+          message: greetingCheck.response,
+          userProfile,
+        };
       }
 
       // 4. Eğer belirli bir parfüm ID'si varsa, direkt onu döndür
