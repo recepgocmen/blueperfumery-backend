@@ -735,43 +735,45 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
   } {
     const q = question.toLowerCase().trim();
 
-    // Küfür listesi (Türkçe yaygın küfürler - sansürlü)
-    const profanityList = [
-      // Küfürler
-      "sik",
-      "sık",
+    // Kelime sınırı ile eşleşme fonksiyonu - yanlış pozitifleri önlemek için
+    const matchesAsWord = (text: string, word: string): boolean => {
+      // Kelime sınırı regex pattern - Türkçe karakterler dahil
+      const wordBoundary = `(?:^|\\s|[.,!?;:'"()\\[\\]{}])`;
+      const pattern = new RegExp(
+        `${wordBoundary}${word.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          "\\$&"
+        )}(?:\\s|[.,!?;:'"()\\[\\]{}]|$)`,
+        "i"
+      );
+      return pattern.test(text);
+    };
+
+    // Küfür listesi - Kelime olarak tam eşleşmesi gereken (yanlış pozitif riski olan)
+    const profanityExactMatch = ["lan", "mal", "sus", "aq", "oç", "sg"];
+
+    // Küfür listesi - İçerme kontrolü yapılacak (benzersiz, yanlış pozitif riski düşük)
+    const profanityContains = [
       "amk",
-      "aq",
-      "oç",
       "piç",
       "orospu",
       "yarrak",
       "göt",
-      "meme",
       "seks",
       "fuck",
       "shit",
-      "ass",
       "bitch",
       "dick",
       "pussy",
-      "damn",
-      "crap",
       "bok",
-      // Kaba ifadeler
       "sanane",
       "sana ne",
-      "sus",
       "kapa çeneni",
       "defol",
       "siktir",
-      "sg",
       "yallah",
-      // Hakaretler
-      "lan",
       "salak",
       "aptal",
-      "mal",
       "gerizekalı",
       "beyinsiz",
       "enayi",
@@ -780,8 +782,19 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       "geri zekalı",
     ];
 
-    // Küfür kontrolü
-    for (const word of profanityList) {
+    // Tam kelime eşleşmesi gereken küfürler
+    for (const word of profanityExactMatch) {
+      if (matchesAsWord(q, word)) {
+        return {
+          isAllowed: false,
+          response:
+            "Hey, 💫 Nazik bir dil kullanalım, olur mu? Ben Mira, parfüm konusunda yardımcı olabilirim!",
+        };
+      }
+    }
+
+    // İçerme kontrolü yapılacak küfürler
+    for (const word of profanityContains) {
       if (q.includes(word)) {
         return {
           isAllowed: false,
@@ -795,13 +808,10 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
     const offTopicPatterns = [
       // Şiddet
       "öldür",
-      "vur",
-      "döv",
       "bıçak",
       "silah",
       "bomba",
       "patlat",
-      "yakala",
       "kaçır",
       // Yasadışı
       "hack",
@@ -815,14 +825,6 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       "adres ver",
       "telefon numarası",
       "şifre",
-      "banka",
-      // Siyaset/din
-      "siyaset",
-      "parti",
-      "seçim",
-      "din",
-      "allah",
-      "tanrı",
       // Cinsel içerik
       "cinsel",
       "erotik",
@@ -875,6 +877,10 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       "oryantal",
       "merhaba",
       "selam",
+      "iyi günler",
+      "günaydın",
+      "teşekkür",
+      "sağol",
       "nasıl",
       "ne",
       "hangi",
@@ -884,6 +890,11 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       "al",
       "satın",
       "sipariş",
+      "hediye",
+      "sevgili",
+      "eş",
+      "anne",
+      "baba",
       "creed",
       "tom ford",
       "dior",
@@ -908,7 +919,6 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       "dolce",
       "bulgari",
       "bentley",
-      "bentley",
       "aventus",
       "sauvage",
       "bleu",
@@ -926,13 +936,51 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       q.includes(keyword)
     );
 
-    // Eğer hiçbir parfüm kelimesi yoksa ve soru uzunsa, muhtemelen konu dışı
-    if (!hasRelevantKeyword && q.length > 50) {
+    // Anlamsız karakter dizisi kontrolü (sadece İngilizce harfler, Türkçe kelime değil)
+    const onlyEnglishLetters = /^[a-zA-Z]+$/;
+    const hasNoTurkishOrMeaning =
+      onlyEnglishLetters.test(q) &&
+      !hasRelevantKeyword &&
+      q.length >= 3 &&
+      q.length < 25;
+
+    // Anlamsız mesaj kontrolü - Türkçe kelime yapısına uymayan
+    if (hasNoTurkishOrMeaning) {
       return {
         isAllowed: false,
         response:
-          "Ben Blue Perfumery'nin parfüm danışmanıyım 🌸 Sadece parfüm konularında yardımcı olabilirim. Sana özel bir koku bulmamı ister misin?",
+          "Hmm, seni tam anlayamadım 🤔 Ben Mira, Blue Perfumery'nin parfüm danışmanıyım. Sana özel bir koku bulmamda yardımcı olabilir miyim?",
       };
+    }
+
+    // Eğer hiçbir parfüm kelimesi yoksa, konu dışı olabilir
+    if (!hasRelevantKeyword) {
+      // Kısa mesajlar için (5-30 karakter) - muhtemelen anlamsız veya konu dışı
+      if (q.length >= 5 && q.length <= 30) {
+        return {
+          isAllowed: false,
+          response:
+            "Hmm, seni tam anlayamadım 🤔 Ben Mira, Blue Perfumery'nin parfüm danışmanıyım. Parfüm hakkında bir sorun varsa yardımcı olmaktan mutluluk duyarım!",
+        };
+      }
+
+      // Uzun mesajlar için (50+ karakter) - kesinlikle konu dışı
+      if (q.length > 50) {
+        return {
+          isAllowed: false,
+          response:
+            "Ben Blue Perfumery'nin parfüm danışmanıyım 🌸 Sadece parfüm ve koku konularında yardımcı olabilirim. Sana özel bir koku bulmamı ister misin?",
+        };
+      }
+
+      // Orta uzunlukta mesajlar (30-50 karakter) - nazikçe yönlendir
+      if (q.length > 30) {
+        return {
+          isAllowed: false,
+          response:
+            "Ben Mira, parfüm konularında uzmanım 💎 Bu konuda yardımcı olamam ama sana harika bir koku bulmak için buradayım! Ne tür parfümler ilgini çekiyor?",
+        };
+      }
     }
 
     return { isAllowed: true, response: "" };
