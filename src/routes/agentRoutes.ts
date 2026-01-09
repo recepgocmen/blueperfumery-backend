@@ -1,6 +1,6 @@
 /**
  * Agent API Routes
- * 
+ *
  * AI Agent'lara erişim için API endpoint'leri
  */
 
@@ -22,7 +22,7 @@ const MAX_REQUESTS = 10; // Dakikada max 10 istek
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
   const entry = requestCache.get(ip);
-  
+
   // İlk istek veya zaman aşımı
   if (!entry || now > entry.resetTime) {
     requestCache.set(ip, {
@@ -31,16 +31,16 @@ function checkRateLimit(ip: string): boolean {
     });
     return true;
   }
-  
+
   // Rate limit aşıldı
   if (entry.count >= MAX_REQUESTS) {
     return false;
   }
-  
+
   // İsteği say
   entry.count++;
   requestCache.set(ip, entry);
-  
+
   // Eski kayıtları temizle (her 100 istekte bir)
   if (requestCache.size > 1000) {
     const keysToDelete: string[] = [];
@@ -49,19 +49,19 @@ function checkRateLimit(ip: string): boolean {
         keysToDelete.push(key);
       }
     });
-    keysToDelete.forEach(key => requestCache.delete(key));
+    keysToDelete.forEach((key) => requestCache.delete(key));
   }
-  
+
   return true;
 }
 
 /**
  * POST /api/agent/chat
- * Serbest soru-cevap
+ * Serbest soru-cevap - Conversation History destekli
  */
 router.post("/chat", async (req: Request, res: Response): Promise<void> => {
   const startTime = Date.now();
-  
+
   try {
     console.log("📨 Chat request received:", {
       body: req.body,
@@ -72,17 +72,22 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
       },
     });
 
-    const { message, perfumeId } = req.body;
-    
+    const { message, perfumeId, conversationHistory = [] } = req.body;
+
     // IP adresini al (proxy desteği ile)
-    const clientIp = 
+    const clientIp =
       (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
       (req.headers["x-real-ip"] as string) ||
       req.ip ||
       req.socket.remoteAddress ||
       "unknown";
 
-    console.log("🔍 Request validation:", { message, perfumeId, clientIp });
+    console.log("🔍 Request validation:", {
+      message,
+      perfumeId,
+      clientIp,
+      conversationHistoryLength: conversationHistory.length,
+    });
 
     if (!message || typeof message !== "string") {
       console.warn("⚠️ Invalid message:", message);
@@ -102,6 +107,19 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // Conversation history validasyonu
+    const validHistory = Array.isArray(conversationHistory)
+      ? conversationHistory
+          .filter(
+            (m: any) =>
+              m &&
+              typeof m.role === "string" &&
+              typeof m.content === "string" &&
+              ["user", "assistant"].includes(m.role)
+          )
+          .slice(-10) // Son 10 mesaj
+      : [];
+
     // Rate limit kontrolü
     if (!checkRateLimit(clientIp)) {
       console.warn("⚠️ Rate limit exceeded for IP:", clientIp);
@@ -114,10 +132,14 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
 
     console.log("🤖 Getting Librarian Agent...");
     const librarian = getLibrarianAgent();
-    
-    console.log("💬 Calling askAboutPerfume...");
-    const response = await librarian.askAboutPerfume(message, perfumeId);
-    
+
+    console.log("💬 Calling askAboutPerfume with conversation history...");
+    const response = await librarian.askAboutPerfume(
+      message,
+      perfumeId,
+      validHistory
+    );
+
     const duration = Date.now() - startTime;
     console.log(`✅ Chat response generated in ${duration}ms`);
 
@@ -126,6 +148,7 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
       data: {
         message: response.message,
         recommendedProducts: response.recommendedProducts || [],
+        userProfile: response.userProfile,
         timestamp: new Date().toISOString(),
       },
     });
@@ -141,27 +164,29 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
       duration: `${duration}ms`,
     });
     console.error("Request body:", req.body);
-    
+
     // AI servisi kullanılamıyor
     if (error.message === "AI_SERVICE_UNAVAILABLE") {
       console.error("🔴 AI Service Unavailable");
       res.status(503).json({
         success: false,
-        error: "AI asistan şu an kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
+        error:
+          "AI asistan şu an kullanılamıyor. Lütfen daha sonra tekrar deneyin.",
         code: "AI_SERVICE_UNAVAILABLE",
       });
       return;
     }
-    
+
     // Daha detaylı hata mesajı (development için)
-    const errorMessage = process.env.NODE_ENV === "development" 
-      ? error.message || "Bir hata oluştu. Lütfen tekrar deneyin."
-      : "Bir hata oluştu. Lütfen tekrar deneyin.";
-    
+    const errorMessage =
+      process.env.NODE_ENV === "development"
+        ? error.message || "Bir hata oluştu. Lütfen tekrar deneyin."
+        : "Bir hata oluştu. Lütfen tekrar deneyin.";
+
     res.status(500).json({
       success: false,
       error: errorMessage,
-      ...(process.env.NODE_ENV === "development" && { 
+      ...(process.env.NODE_ENV === "development" && {
         details: error.stack,
         errorName: error.name,
       }),
@@ -202,7 +227,7 @@ router.post("/analyze", async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error: any) {
     console.error("Agent analyze error:", error);
-    
+
     if (error.message === "AI_SERVICE_UNAVAILABLE") {
       res.status(503).json({
         success: false,
@@ -211,7 +236,7 @@ router.post("/analyze", async (req: Request, res: Response): Promise<void> => {
       });
       return;
     }
-    
+
     res.status(500).json({
       success: false,
       error: "Bir hata oluştu",
@@ -244,7 +269,7 @@ router.post("/similar", async (req: Request, res: Response): Promise<void> => {
     });
   } catch (error: any) {
     console.error("Agent similar error:", error);
-    
+
     if (error.message === "AI_SERVICE_UNAVAILABLE") {
       res.status(503).json({
         success: false,
@@ -253,7 +278,7 @@ router.post("/similar", async (req: Request, res: Response): Promise<void> => {
       });
       return;
     }
-    
+
     res.status(500).json({
       success: false,
       error: "Bir hata oluştu",

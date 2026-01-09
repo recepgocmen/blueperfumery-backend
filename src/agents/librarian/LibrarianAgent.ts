@@ -1,11 +1,34 @@
 /**
- * Librarian Agent - Parfüm Bilgi Uzmanı
+ * Librarian Agent - Mira: Koku Danışmanı
  *
- * Parfüm verilerini zenginleştirir, analiz eder ve benzer parfümleri bulur.
+ * Blue Perfumery'nin uzman parfüm danışmanı Mira.
+ * Müşterilerle samimi sohbet eder, profil oluşturur ve kişiselleştirilmiş öneriler sunar.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
 import { Product } from "../../models/Product";
+
+// Conversation mesaj tipi
+export interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+// Kullanıcı profili - sohbet boyunca toplanan bilgiler
+export interface UserProfile {
+  gender?: "erkek" | "kadın" | "unisex";
+  season?: "yaz" | "kış" | "ilkbahar" | "sonbahar";
+  occasion?: "günlük" | "iş" | "gece" | "özel";
+  personality?: "enerjik" | "sakin" | "romantik" | "gizemli" | "sportif";
+  preferredNotes?: string[];
+  dislikedNotes?: string[];
+  intensity?: "hafif" | "orta" | "yoğun";
+  budget?: "ekonomik" | "orta" | "premium";
+  ageGroup?: "genç" | "yetişkin" | "olgun";
+  collectedInfo: string[]; // Topladığımız bilgiler
+  profilingComplete: boolean; // Profilleme tamamlandı mı
+  questionAsked: number; // Kaç profilleme sorusu soruldu
+}
 
 // Agent response tipleri
 export interface EnrichedPerfumeProfile {
@@ -36,6 +59,69 @@ export interface PerfumeAnalysis {
   idealFor: string[];
   pairingNotes: string[];
 }
+
+// Mira'nın karakteri için zengin system prompt
+const MIRA_SYSTEM_PROMPT = `Sen "Mira" - Blue Perfumery'de çalışan, uzman ve nazik bir Koku Danışmanı (Scent Consultant) rolündesin. Görevin, müşterilere sadece parfüm satmak değil, onlara karakterlerine ve zevklerine en uygun imza kokuyu bulmalarında rehberlik etmektir.
+
+### TEMEL DAVRANIŞ KURALLARI:
+
+1. **ACELE ETME:** Müşteri daha "Merhaba" dediğinde hemen liste sunma. Önce selamla ve nasıl bir arayışta olduğunu sor.
+
+2. **ADIM ADIM İLERLE:** Bir koku önermeden önce en az 2-3 soru sorarak müşteriyi tanı:
+   - Cinsiyet tercihi (kendisi için mi, hediye mi)
+   - Kullanım ortamı (günlük, iş, gece, özel gün)
+   - Sevdiği/sevmediği notalar
+   - Hafif mi, yoğun mu tercih
+
+3. **SAMİMİ VE PROFESYONEL TON:** Hitap şeklin "Sen" olsun ve samimiyeti elden bırakma. Betimleyici dil kullan:
+   - ❌ "Bu parfümde gül var" 
+   - ✅ "Bu parfüm, sabah çiğiyle ıslanmış taze Isparta güllerinin ferahlığını teninize taşıyor"
+
+4. **ALAKASIZ SORULARI REDDET:** Parfüm, kozmetik veya kişisel bakım dışı konularda nazikçe: "Ben bir koku uzmanıyım, sana sadece bu alanda en iyi deneyimi sunabilirim. Parfüm hakkında konuşalım mı?"
+
+### DİYALOG AKIŞ ŞEMASI:
+
+**Aşama 1 - KARŞILAMA:** Sıcak bir karşılama. Müşteriyi tanımaya yönelik bir soru.
+
+**Aşama 2 - PROFİLLEME:** Tarzını anlama:
+- Gündüz mü, gece mi kullanacak?
+- Odunsu mu, çiçeksi mi, ferah mı?
+- Ağır mı, hafif mi tercih?
+
+**Aşama 3 - ÖNERİ:** Eldeki bilgilerle 2-3 spesifik parfüm önerisi. Her önerinin NEDEN seçildiğini açıkla.
+
+**Aşama 4 - KAPANIŞ:** Seçenekler hakkında ne düşündüğünü sor.
+
+### BETİMLEYİCİ DİL ÖRNEKLERİ:
+
+- "Bu koku, sonbahar yaprakları arasında yürüyüş gibi..."
+- "Taze kesilmiş çimenlerin üzerine düşen yaz yağmuru..."  
+- "Gece yarısı okyanus esintisi gibi ferahlatıcı..."
+- "Sıcak bir kahve dükkanının o sarmalayıcı havası..."
+- "İlk bahar sabahında açan çiçeklerin o tatlı kokusu..."
+
+### KESİN YASAKLAR (ÇOK ÖNEMLİ):
+- ❌ Bilmediğin notalar hakkında uydurma bilgi verme
+- ❌ Her mesajda en fazla 1-2 soru sor (soru yağmuru yapma)
+- ❌ Robotik, tek kelimelik cevaplardan kaçın
+- ❌ Hemen ürün listesi dökme, önce müşteriyi tanı
+- ❌ **ASLA** müşteri adına konuşma veya yazma (örn: "Müşteri: ..." yazma)
+- ❌ **ASLA** roleplay formatı kullanma (örn: "*gülümseyerek*", "*samimi bir şekilde*")
+- ❌ **ASLA** aksiyon açıklamaları yazma (yıldız işaretli ifadeler)
+- ❌ **ASLA** diyalog simülasyonu yapma
+- ❌ **ASLA** "Mira:" veya "Müşteri:" gibi etiketler kullanma
+- ❌ Sadece kendi cevabını yaz, müşterinin ne diyeceğini tahmin etme
+
+### EMOJI KULLANIMI:
+- Ölçülü kullan (her mesajda 1-2 emoji yeterli)
+- Uygun emojiler: 💫 ✨ 🌸 💎 🌟 🌙 ☀️ 🍂 ❄️
+
+### KONUŞMA TARZI:
+- Kısa ve akıcı cümleler (max 2-3 cümle)
+- Soru işaretlerini doğru kullan
+- Noktalama ve imla kurallarına dikkat et
+- Türkçe karakterleri doğru kullan
+- Doğrudan müşteriye hitap et, 3. şahıs kullanma`;
 
 export class LibrarianAgent {
   private client: Anthropic | null = null;
@@ -648,6 +734,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
 
     // Küfür listesi (Türkçe yaygın küfürler - sansürlü)
     const profanityList = [
+      // Küfürler
       "sik",
       "sık",
       "amk",
@@ -668,6 +755,16 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       "damn",
       "crap",
       "bok",
+      // Kaba ifadeler
+      "sanane",
+      "sana ne",
+      "sus",
+      "kapa çeneni",
+      "defol",
+      "siktir",
+      "sg",
+      "yallah",
+      // Hakaretler
       "lan",
       "salak",
       "aptal",
@@ -675,6 +772,9 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       "gerizekalı",
       "beyinsiz",
       "enayi",
+      "dangalak",
+      "ahmak",
+      "geri zekalı",
     ];
 
     // Küfür kontrolü
@@ -931,16 +1031,58 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
     }
 
     // Eğer marka bulunamadıysa, büyük harfle başlayan kelimeleri ara
+    // Ama cinsiyet/mevsim/genel kelimeleri hariç tut
     if (!productName) {
+      const excludeWords = [
+        "erkek",
+        "kadın",
+        "bay",
+        "bayan",
+        "unisex",
+        "yaz",
+        "kış",
+        "ilkbahar",
+        "sonbahar",
+        "bahar",
+        "parfüm",
+        "parfümü",
+        "koku",
+        "arıyorum",
+        "istiyorum",
+        "öner",
+        "tavsiye",
+        "bul",
+        "günlük",
+        "gece",
+        "özel",
+        "ben",
+        "bir",
+        "için",
+        "merhaba",
+        "selam",
+        "hey",
+      ];
+
       const words = question.split(/\s+/);
       const potentialNames = words.filter(
-        (w) => w.length > 2 && /^[A-ZÇĞİÖŞÜ]/.test(w)
+        (w) =>
+          w.length > 2 &&
+          /^[A-ZÇĞİÖŞÜ]/.test(w) &&
+          !excludeWords.includes(w.toLowerCase())
       );
       if (potentialNames.length > 0) {
         // İlk 2 kelimeyi al (marka + model)
         productName = potentialNames.slice(0, 2).join(" ");
       }
     }
+
+    // "arıyorum", "istiyorum" varsa bu bir öneri isteği
+    const searchKeywords = ["arıyorum", "istiyorum", "bakıyorum", "lazım"];
+    const isSearchRequest = searchKeywords.some((k) => q.includes(k));
+
+    // "arıyorum" + cinsiyet varsa, bu bir öneri isteği (ürün araması değil)
+    const isGenderBasedRequest =
+      isSearchRequest && !!foundGender && !productName;
 
     // Belirsizlik kontrolü - sadece gerçekten belirsizse sor
     // Liste isteği veya spesifik ürün ismi varsa belirsizlik yok
@@ -950,6 +1092,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       !foundSeason &&
       !foundGender &&
       !productName &&
+      !isGenderBasedRequest &&
       !q.includes("bakalım") && // "öner bakalım" gibi durumlar için
       q.length > 10; // Çok kısa mesajlar için değil
 
@@ -957,22 +1100,359 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       productName,
       season: foundSeason,
       gender: foundGender,
-      isRecommendationRequest,
+      isRecommendationRequest: isRecommendationRequest || isGenderBasedRequest,
       isListRequest,
       needsClarification,
     };
   }
 
   /**
-   * Serbest metin sorusu sor - Geliştirilmiş versiyon
-   * Returns: { message: string, recommendedProducts?: Array<{id, name, brand}> }
+   * Conversation history'den kullanıcı profilini çıkar
+   */
+  private extractUserProfile(
+    conversationHistory: ConversationMessage[]
+  ): UserProfile {
+    const profile: UserProfile = {
+      collectedInfo: [],
+      profilingComplete: false,
+      questionAsked: 0,
+    };
+
+    // Tüm kullanıcı mesajlarını analiz et
+    const userMessages = conversationHistory
+      .filter((m) => m.role === "user")
+      .map((m) => m.content.toLowerCase());
+
+    for (const msg of userMessages) {
+      // Cinsiyet
+      if (msg.includes("erkek") || msg.includes("bay")) {
+        profile.gender = "erkek";
+        profile.collectedInfo.push("Cinsiyet: Erkek");
+      } else if (msg.includes("kadın") || msg.includes("bayan")) {
+        profile.gender = "kadın";
+        profile.collectedInfo.push("Cinsiyet: Kadın");
+      } else if (msg.includes("unisex") || msg.includes("farketmez")) {
+        profile.gender = "unisex";
+        profile.collectedInfo.push("Cinsiyet: Unisex");
+      }
+
+      // Mevsim
+      if (msg.includes("yaz") || msg.includes("sıcak")) {
+        profile.season = "yaz";
+        profile.collectedInfo.push("Mevsim: Yaz");
+      } else if (msg.includes("kış") || msg.includes("soğuk")) {
+        profile.season = "kış";
+        profile.collectedInfo.push("Mevsim: Kış");
+      } else if (msg.includes("ilkbahar") || msg.includes("bahar")) {
+        profile.season = "ilkbahar";
+        profile.collectedInfo.push("Mevsim: İlkbahar");
+      } else if (msg.includes("sonbahar") || msg.includes("güz")) {
+        profile.season = "sonbahar";
+        profile.collectedInfo.push("Mevsim: Sonbahar");
+      }
+
+      // Kullanım ortamı
+      if (
+        msg.includes("günlük") ||
+        msg.includes("her gün") ||
+        msg.includes("ofis")
+      ) {
+        profile.occasion = "günlük";
+        profile.collectedInfo.push("Kullanım: Günlük");
+      } else if (msg.includes("iş") || msg.includes("toplantı")) {
+        profile.occasion = "iş";
+        profile.collectedInfo.push("Kullanım: İş");
+      } else if (
+        msg.includes("gece") ||
+        msg.includes("akşam") ||
+        msg.includes("parti")
+      ) {
+        profile.occasion = "gece";
+        profile.collectedInfo.push("Kullanım: Gece");
+      } else if (
+        msg.includes("özel") ||
+        msg.includes("randevu") ||
+        msg.includes("romantik")
+      ) {
+        profile.occasion = "özel";
+        profile.collectedInfo.push("Kullanım: Özel gün");
+      }
+
+      // Kişilik
+      if (
+        msg.includes("enerjik") ||
+        msg.includes("dinamik") ||
+        msg.includes("aktif")
+      ) {
+        profile.personality = "enerjik";
+        profile.collectedInfo.push("Kişilik: Enerjik");
+      } else if (
+        msg.includes("sakin") ||
+        msg.includes("huzurlu") ||
+        msg.includes("rahat")
+      ) {
+        profile.personality = "sakin";
+        profile.collectedInfo.push("Kişilik: Sakin");
+      } else if (msg.includes("romantik") || msg.includes("duygusal")) {
+        profile.personality = "romantik";
+        profile.collectedInfo.push("Kişilik: Romantik");
+      } else if (
+        msg.includes("gizemli") ||
+        msg.includes("çekici") ||
+        msg.includes("karizmatik")
+      ) {
+        profile.personality = "gizemli";
+        profile.collectedInfo.push("Kişilik: Gizemli");
+      } else if (msg.includes("sportif") || msg.includes("ferah")) {
+        profile.personality = "sportif";
+        profile.collectedInfo.push("Kişilik: Sportif");
+      }
+
+      // Yoğunluk tercihi
+      if (
+        msg.includes("hafif") ||
+        msg.includes("light") ||
+        msg.includes("az")
+      ) {
+        profile.intensity = "hafif";
+        profile.collectedInfo.push("Yoğunluk: Hafif");
+      } else if (
+        msg.includes("yoğun") ||
+        msg.includes("ağır") ||
+        msg.includes("strong")
+      ) {
+        profile.intensity = "yoğun";
+        profile.collectedInfo.push("Yoğunluk: Yoğun");
+      } else if (msg.includes("orta") || msg.includes("dengeli")) {
+        profile.intensity = "orta";
+        profile.collectedInfo.push("Yoğunluk: Orta");
+      }
+
+      // Nota tercihleri
+      const noteKeywords = [
+        "odunsu",
+        "çiçeksi",
+        "tatlı",
+        "meyveli",
+        "baharatlı",
+        "ferah",
+        "aquatik",
+        "oryantal",
+        "vanilya",
+        "amber",
+        "misk",
+        "sedir",
+        "sandal",
+        "lavanta",
+        "bergamot",
+        "gül",
+        "yasemin",
+      ];
+      for (const note of noteKeywords) {
+        if (msg.includes(note)) {
+          if (!profile.preferredNotes) profile.preferredNotes = [];
+          if (!profile.preferredNotes.includes(note)) {
+            profile.preferredNotes.push(note);
+            profile.collectedInfo.push(`Nota tercihi: ${note}`);
+          }
+        }
+      }
+    }
+
+    // Profilleme tamamlandı mı kontrol et (en az 2 bilgi toplandıysa)
+    const uniqueInfo = [...new Set(profile.collectedInfo)];
+    profile.collectedInfo = uniqueInfo;
+    profile.profilingComplete = uniqueInfo.length >= 2;
+
+    return profile;
+  }
+
+  /**
+   * Profilleme sorusu üret
+   */
+  private generateProfilingQuestion(
+    profile: UserProfile,
+    questionCount: number
+  ): string | null {
+    // Maksimum 3 profilleme sorusu
+    if (questionCount >= 3 || profile.profilingComplete) {
+      return null;
+    }
+
+    const questions: string[] = [];
+
+    if (!profile.gender) {
+      questions.push(
+        "Kendine mi yoksa birine hediye olarak mı arıyorsun? Erkek mi kadın mı parfüm olsun? 💫"
+      );
+    }
+
+    if (!profile.occasion && profile.gender) {
+      questions.push(
+        "Harika! Peki bu kokuyu ne zaman kullanmayı düşünüyorsun? Günlük mü, iş için mi, yoksa özel geceler için mi? ✨"
+      );
+    }
+
+    if (!profile.intensity && profile.gender && profile.occasion) {
+      questions.push(
+        "Hafif ve ferahlatıcı bir koku mu tercih edersin, yoksa daha yoğun ve iz bırakan bir şey mi? 🌸"
+      );
+    }
+
+    if (!profile.season && profile.gender) {
+      questions.push(
+        "Hangi mevsimde kullanmak istiyorsun? Yaz sıcağı için mi, kış soğuğu için mi? ☀️❄️"
+      );
+    }
+
+    if (
+      !profile.personality &&
+      profile.gender &&
+      !profile.preferredNotes?.length
+    ) {
+      questions.push(
+        "Seni en iyi hangi kelime tanımlar: Enerjik mi, sakin mi, romantik mi, yoksa gizemli mi? 🌟"
+      );
+    }
+
+    return questions.length > 0 ? questions[0] : null;
+  }
+
+  /**
+   * Profile göre ürün önerisi oluştur
+   */
+  private async getRecommendationsForProfile(
+    profile: UserProfile
+  ): Promise<any[]> {
+    const filter: any = { status: "active" };
+
+    // Cinsiyet filtresi
+    if (profile.gender === "erkek") {
+      filter.gender = { $in: ["male", "unisex"] };
+    } else if (profile.gender === "kadın") {
+      filter.gender = { $in: ["female", "unisex"] };
+    }
+
+    // Mevsim karakteristik filtresi
+    if (profile.season) {
+      const seasonTraits: Record<string, string[]> = {
+        yaz: ["ferah", "aquatik", "citrusy", "light", "narenciyeli"],
+        kış: ["woody", "warm", "spicy", "sweet", "sıcak", "baharatlı"],
+        ilkbahar: ["fresh", "floral", "light", "green", "çiçeksi"],
+        sonbahar: ["spicy", "woody", "warm", "amber", "oriental"],
+      };
+      const traits = seasonTraits[profile.season] || [];
+      if (traits.length > 0) {
+        filter.characteristics = { $in: traits };
+      }
+    }
+
+    // Nota tercihi filtresi
+    if (profile.preferredNotes && profile.preferredNotes.length > 0) {
+      filter.notes = { $in: profile.preferredNotes };
+    }
+
+    const products = await Product.find(filter).limit(10).lean();
+
+    // Yoğunluk tercihine göre sırala
+    if (profile.intensity && products.length > 0) {
+      // Bu basit bir yaklaşım - gerçek uygulamada longevity/sillage skorları kullanılabilir
+      return products.slice(0, 3);
+    }
+
+    return products.slice(0, 3);
+  }
+
+  /**
+   * Betimleyici ürün açıklaması oluştur
+   */
+  private generatePoetricDescription(
+    product: any,
+    profile: UserProfile
+  ): string {
+    const notes = Array.isArray(product.notes) ? product.notes : [];
+    const chars = Array.isArray(product.characteristics)
+      ? product.characteristics
+      : [];
+
+    // Nota bazlı betimlemeler
+    const noteDescriptions: Record<string, string> = {
+      bergamot: "İtalya'nın güneşli bahçelerinden gelen taze bergamot",
+      vanilya: "sıcacık sarmalayan tatlı vanilya",
+      sandal: "Hint ormanlarından gelen egzotik sandal ağacı",
+      sedir: "görkemli sedir ormanlarının maskülen kokusu",
+      gül: "sabah çiğiyle ıslanmış Isparta gülleri",
+      yasemin: "gece açan beyaz yaseminlerin büyüleyici kokusu",
+      lavanta: "Provence tarlalarından esen lavanta esintisi",
+      amber: "antik çağlardan gelen sıcak amber",
+      misk: "tenle bütünleşen gizemli misk",
+      ud: "nadir bulunan değerli ud ağacı",
+    };
+
+    // Karakteristik bazlı betimlemeler
+    const charDescriptions: Record<string, string> = {
+      ferah: "yaz sabahı gibi canlandırıcı",
+      odunsu: "orman yürüyüşü gibi toprak kokulu",
+      çiçeksi: "bahar bahçesi gibi zarif",
+      tatlı: "bal gibi sarmalayıcı",
+      baharatlı: "oryantal pazarlar gibi egzotik",
+      oryantal: "bin bir gece masalları gibi gizemli",
+    };
+
+    let description = "";
+
+    // Nota açıklamaları
+    for (const note of notes.slice(0, 2)) {
+      const noteLower = note.toLowerCase();
+      for (const [key, desc] of Object.entries(noteDescriptions)) {
+        if (noteLower.includes(key)) {
+          description += description ? ` ve ${desc}` : desc;
+          break;
+        }
+      }
+    }
+
+    // Karakteristik açıklaması
+    for (const char of chars.slice(0, 1)) {
+      const charLower = char.toLowerCase();
+      for (const [key, desc] of Object.entries(charDescriptions)) {
+        if (charLower.includes(key)) {
+          description += description
+            ? `. ${desc[0].toUpperCase() + desc.slice(1)}`
+            : desc;
+          break;
+        }
+      }
+    }
+
+    // Kullanım önerisi
+    if (profile.occasion) {
+      const occasionTexts: Record<string, string> = {
+        günlük: "Her güne güzel bir başlangıç için ideal",
+        iş: "Profesyonel ortamlarda güven veren bir seçim",
+        gece: "Geceleri iz bırakmak isteyenler için",
+        özel: "O özel anları unutulmaz kılacak bir koku",
+      };
+      if (occasionTexts[profile.occasion]) {
+        description += `. ${occasionTexts[profile.occasion]}`;
+      }
+    }
+
+    return description || "Zarif ve etkileyici bir koku";
+  }
+
+  /**
+   * Serbest metin sorusu sor - Conversation History destekli
+   * Returns: { message: string, recommendedProducts?: Array<{id, name, brand}>, userProfile?: UserProfile }
    */
   async askAboutPerfume(
     question: string,
-    perfumeId?: string
+    perfumeId?: string,
+    conversationHistory: ConversationMessage[] = []
   ): Promise<{
     message: string;
     recommendedProducts?: Array<{ id: string; name: string; brand: string }>;
+    userProfile?: UserProfile;
   }> {
     try {
       this.checkApiKey();
@@ -989,78 +1469,70 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         };
       }
 
-      // 0.5 SELAMLAMA KONTROLÜ - samimi sohbet yap
-      const greetingCheck = this.checkGreeting(question);
-      if (greetingCheck.isGreeting) {
-        return {
-          message: greetingCheck.response,
-        };
+      // 1. Kullanıcı profilini çıkar
+      const userProfile = this.extractUserProfile([
+        ...conversationHistory,
+        { role: "user", content: question },
+      ]);
+
+      // 2. Sohbet sayısını kontrol et
+      const messageCount = conversationHistory.length;
+
+      // 3. İlk mesaj veya selamlama kontrolü
+      if (messageCount === 0) {
+        const greetingCheck = this.checkGreeting(question);
+        if (greetingCheck.isGreeting) {
+          return {
+            message: greetingCheck.response,
+            userProfile,
+          };
+        }
       }
 
-      // 1. Eğer belirli bir parfüm ID'si varsa, direkt onu döndür
+      // 4. Eğer belirli bir parfüm ID'si varsa, direkt onu döndür
       if (perfumeId) {
         const perfume = await Product.findOne({
           id: perfumeId,
           status: "active",
         });
         if (perfume) {
-          const notes = Array.isArray(perfume.notes) ? perfume.notes : [];
-          const characteristics = Array.isArray(perfume.characteristics)
-            ? perfume.characteristics
-            : [];
+          const poetricDesc = this.generatePoetricDescription(
+            perfume,
+            userProfile
+          );
 
-          const context = `
-Parfüm Bilgisi:
-- İsim: ${perfume.name}
-- Marka: ${perfume.brand}
-- Notalar: ${notes.length > 0 ? notes.join(", ") : "Belirtilmemiş"}
-- Karakteristikler: ${
-            characteristics.length > 0
-              ? characteristics.join(", ")
-              : "Belirtilmemiş"
-          }
-- Cinsiyet: ${perfume.gender}
-- Fiyat: ${perfume.price} TL
-- Açıklama: ${perfume.description}
-`;
-
-          const prompt = `Sen "Mira" - Blue Perfumery'nin samimi parfüm danışmanı.
-
-⚠️ ÖNEMLİ: MAX 2-3 CÜMLE! Uzun yazma.
-
-Stil:
-- Sen dili, samimi, arkadaşça
-- 1 emoji yeter
-- Parfüm hakkında bilgi ver
-
-${context}
-
-Müşteri: ${question}
-
-Mira (kısa cevap):`;
-
-          const response = await this.client!.messages.create({
-            model: this.model,
-            max_tokens: 200,
-            messages: [{ role: "user", content: prompt }],
-          });
-
-          const content = response.content[0];
-          if (content.type === "text") {
-            return {
-              message: content.text,
-              recommendedProducts: [
-                { id: perfume.id, name: perfume.name, brand: perfume.brand },
-              ],
-            };
-          }
+          return {
+            message: `${perfume.name} harika bir seçim! 💫 ${poetricDesc}. ${perfume.price} TL.`,
+            recommendedProducts: [
+              { id: perfume.id, name: perfume.name, brand: perfume.brand },
+            ],
+            userProfile,
+          };
         }
       }
 
-      // 2. Sorudan intent çıkar
+      // 5. Sorudan intent çıkar
       const intent = this.extractIntent(question);
 
-      // 3. Liste isteği - kısa ve öz liste göster
+      // 6. Profilleme aşaması - henüz yeterli bilgi toplanmadıysa
+      if (
+        !userProfile.profilingComplete &&
+        !intent.productName &&
+        !intent.isListRequest
+      ) {
+        const profilingQuestion = this.generateProfilingQuestion(
+          userProfile,
+          messageCount
+        );
+        if (profilingQuestion && messageCount < 4) {
+          return {
+            message: profilingQuestion,
+            userProfile,
+          };
+        }
+      }
+
+      // 7. Liste isteği
       if (intent.isListRequest) {
         const sampleProducts = await Product.find({ status: "active" })
           .limit(8)
@@ -1072,43 +1544,29 @@ Mira (kısa cevap):`;
           .join("\n");
 
         return {
-          message: `Koleksiyonumuzdan örnekler: ✨\n\n${productList}\n\nDaha fazla görmek için kategori sayfalarına bakabilirsin!`,
+          message: `İşte koleksiyonumuzdan bazı seçenekler: ✨\n\n${productList}\n\nHangi tarz dikkatini çekti?`,
+          userProfile,
         };
       }
 
-      // 4. Belirsizlik durumunda detay sor (ama sadece gerçekten belirsizse)
-      if (intent.needsClarification) {
-        return {
-          message:
-            "Tabii! Sana daha iyi önerebilmek için birkaç şey öğrenebilir miyim? 🌸\n\nNasıl bir koku arıyorsun?\n- Erkek / Kadın / Unisex\n- Hangi mevsim için? (Yaz / Kış / İlkbahar / Sonbahar)\n- Ne tür bir koku? (Tatlı / Çiçeksi / Odunsu / Ferah vb.)",
-        };
-      }
-
-      // 5. Parfüm ismi varsa DB'de ara
+      // 8. Parfüm ismi varsa DB'de ara
       if (intent.productName) {
-        // Önce tam isimle ara
         let searchResults = await this.searchProductsInDB(intent.productName);
 
-        // Bulunamazsa sadece marka ile ara
         if (searchResults.length === 0) {
           const brandOnly = intent.productName.split(" ")[0];
           searchResults = await this.searchProductsInDB(brandOnly);
         }
 
         if (searchResults.length > 0) {
-          // Bulundu - ilk sonucu göster
           const foundProduct = searchResults[0];
-          const notes = Array.isArray(foundProduct.notes)
-            ? foundProduct.notes
-            : [];
-          const price = foundProduct.price || "N/A";
+          const poetricDesc = this.generatePoetricDescription(
+            foundProduct,
+            userProfile
+          );
 
           return {
-            message: `Evet! ${foundProduct.name} koleksiyonumuzda var ✨ ${
-              foundProduct.brand
-            } markasından. Notaları: ${notes
-              .slice(0, 3)
-              .join(", ")}. Fiyat: ${price} TL.`,
+            message: `Evet, ${foundProduct.name} koleksiyonumuzda var! 💫 ${poetricDesc}. Fiyat: ${foundProduct.price} TL.`,
             recommendedProducts: [
               {
                 id: foundProduct.id,
@@ -1116,258 +1574,158 @@ Mira (kısa cevap):`;
                 brand: foundProduct.brand,
               },
             ],
+            userProfile,
           };
         } else {
-          // Bulunamadı - nota bazlı benzer ürünler öner (MAX 2 ürün)
+          // Bulunamadı - benzer öner
           const knownProfile = this.getKnownPerfumeProfile(intent.productName);
-
           let similarProducts: any[] = [];
-          let profileDescription = "";
 
           if (knownProfile) {
-            // Bilinen parfüm profili varsa, ona göre benzer bul
             similarProducts = await this.findSimilarByProfile(knownProfile);
-            profileDescription = knownProfile.description;
           } else {
-            // Bilinmeyen parfüm - popüler ürünlerden seç (nota ve özellik bilgisiyle)
-            const popularProducts = await Product.find({ status: "active" })
-              .sort({ price: -1 })
-              .limit(10)
-              .lean();
-            similarProducts = popularProducts.slice(0, 2); // MAX 2 ürün
+            similarProducts = await this.getRecommendationsForProfile(
+              userProfile
+            );
           }
 
-          // MAX 2 ürünle sınırla
           similarProducts = similarProducts.slice(0, 2);
 
           if (similarProducts.length > 0) {
-            // Her ürün için detaylı bilgi göster (nota + özellik)
             const suggestions = similarProducts
               .map((p) => {
-                const notes = Array.isArray(p.notes) ? p.notes : [];
-                const chars = Array.isArray(p.characteristics)
-                  ? p.characteristics
-                  : [];
-                const matchedNotes =
-                  p.matchedNotes?.slice(0, 3) || notes.slice(0, 3);
-
-                const notesText =
-                  matchedNotes.length > 0
-                    ? `Notalar: ${matchedNotes.join(", ")}`
-                    : "";
-                const charsText =
-                  chars.length > 0
-                    ? `Özellikler: ${chars.slice(0, 3).join(", ")}`
-                    : "";
-
-                return `• ${p.name}\n  ${notesText}\n  ${charsText}`;
+                const poetricDesc = this.generatePoetricDescription(
+                  p,
+                  userProfile
+                );
+                return `• **${p.name}** - ${poetricDesc}`;
               })
               .join("\n\n");
 
-            const profileText = knownProfile
-              ? `\n\n${knownProfile.name}: ${profileDescription}`
-              : "";
-
             return {
-              message: `"${intent.productName}" koleksiyonumuzda yok 😔${profileText}\n\nSana benzer önerilerim:\n\n${suggestions}`,
+              message: `"${intent.productName}" şu an koleksiyonumuzda yok ama sana çok yakışacak alternatiflerim var! 🌟\n\n${suggestions}\n\nHangisi ilgini çekti?`,
               recommendedProducts: similarProducts.map((p) => ({
                 id: p.id,
                 name: p.name,
                 brand: p.brand,
               })),
+              userProfile,
             };
           }
         }
       }
 
-      // 6. Mevsim/cinsiyet bazlı öneri
-      if (intent.isRecommendationRequest && (intent.season || intent.gender)) {
-        const filteredProducts = await this.filterProductsByCriteria(
-          intent.season,
-          intent.gender,
-          5
+      // 9. Profile göre öneri (yeterli bilgi toplandıysa)
+      if (userProfile.profilingComplete || intent.isRecommendationRequest) {
+        const recommendations = await this.getRecommendationsForProfile(
+          userProfile
         );
 
-        if (filteredProducts.length > 0) {
-          // Rastgele 2-3 ürün seç
-          const shuffled = filteredProducts.sort(() => 0.5 - Math.random());
-          const recommendations = shuffled.slice(0, 3);
-
+        if (recommendations.length > 0) {
           const recText = recommendations
             .map((p) => {
-              const notes = Array.isArray(p.notes) ? p.notes : [];
-              return `• ${p.name} (${p.brand})`;
+              const poetricDesc = this.generatePoetricDescription(
+                p,
+                userProfile
+              );
+              return `• **${p.name}** (${p.brand})\n  ${poetricDesc}`;
             })
-            .join("\n");
+            .join("\n\n");
 
-          const seasonText = intent.season ? `${intent.season} için ` : "";
-          const genderText = intent.gender ? `${intent.gender} ` : "";
+          const profileSummary =
+            userProfile.collectedInfo.length > 0
+              ? `Senin için ${userProfile.collectedInfo
+                  .slice(0, 2)
+                  .join(", ")
+                  .toLowerCase()} tercihlerine göre seçtim:`
+              : "Sana özel seçtiklerim:";
 
           return {
-            message: `${seasonText}${genderText}için önerilerim: ✨\n\n${recText}`,
+            message: `${profileSummary} 💎\n\n${recText}\n\nHangisini denemek istersin?`,
             recommendedProducts: recommendations.map((p) => ({
               id: p.id,
               name: p.name,
               brand: p.brand,
             })),
+            userProfile,
           };
         }
       }
 
-      // 7. Genel öneri isteği (mevsim/cinsiyet belirtilmemiş)
-      if (intent.isRecommendationRequest) {
-        // Popüler/çeşitli ürünler öner
-        const randomProducts = await Product.find({ status: "active" })
-          .limit(20)
-          .lean();
-
-        const shuffled = randomProducts.sort(() => 0.5 - Math.random());
-        const recommendations = shuffled.slice(0, 3);
-
-        const recText = recommendations
-          .map((p) => `• ${p.name} (${p.brand})`)
-          .join("\n");
-
-        return {
-          message: `Sana özel önerilerim: ✨\n\n${recText}`,
-          recommendedProducts: recommendations.map((p) => ({
-            id: p.id,
-            name: p.name,
-            brand: p.brand,
-          })),
-        };
-      }
-
-      // 8. Kısa cevaplar ve satın alma istekleri
-      const purchaseKeywords = [
-        "alayım",
-        "al",
-        "satın al",
-        "alabilir miyim",
-        "işte",
-        "bu",
-        "şunu",
-      ];
-      const isPurchaseRequest = purchaseKeywords.some((keyword) =>
-        question.toLowerCase().includes(keyword)
-      );
-
-      if (isPurchaseRequest && intent.productName) {
-        // Ürün ismi varsa direkt göster
-        const searchResults = await this.searchProductsInDB(intent.productName);
-        if (searchResults.length > 0) {
-          const product = searchResults[0];
-          return {
-            message: `Harika seçim! ${product.name} için detay sayfasına bakabilirsin ✨`,
-            recommendedProducts: [
-              {
-                id: product.id,
-                name: product.name,
-                brand: product.brand,
-              },
-            ],
-          };
-        }
-      }
-
-      // 9. "Benzeri", "aç", "detay" gibi takip soruları - proaktif öneri yap
-      const followUpKeywords = [
-        "benzeri",
-        "benzer",
-        "aç",
-        "açar",
-        "detay",
-        "hangisi",
-        "fark",
-      ];
-      const isFollowUp = followUpKeywords.some((keyword) =>
-        question.toLowerCase().includes(keyword)
-      );
-
-      if (isFollowUp) {
-        // Erkek parfümü öner (varsayılan - daha güvenli)
-        const maleProducts = await Product.find({
-          status: "active",
-          $or: [{ gender: "male" }, { gender: "unisex" }],
-        })
-          .limit(10)
-          .lean();
-
-        if (maleProducts.length > 0) {
-          const shuffled = maleProducts.sort(() => 0.5 - Math.random());
-          const product = shuffled[0];
-          const notes = Array.isArray(product.notes) ? product.notes : [];
-
-          return {
-            message: `${product.name} önerebilirim! ${notes
-              .slice(0, 2)
-              .join(" ve ")} notalarıyla ferah bir koku ✨`,
-            recommendedProducts: [
-              {
-                id: product.id,
-                name: product.name,
-                brand: product.brand,
-              },
-            ],
-          };
-        }
-      }
-
-      // 10. Genel soru - AI ile yanıtla (son çare)
+      // 10. AI ile zengin yanıt üret (son çare)
       const allPerfumes = await Product.find({ status: "active" })
-        .limit(20)
-        .select("name notes gender price characteristics")
+        .limit(15)
+        .select("name notes gender price characteristics brand")
         .lean();
 
-      // Sadece erkek ve unisex parfümleri listele (daha tutarlı olması için)
-      const filteredPerfumes = allPerfumes.filter(
-        (p) => p.gender === "male" || p.gender === "unisex"
+      const genderFilter =
+        userProfile.gender === "kadın"
+          ? ["female", "unisex"]
+          : ["male", "unisex"];
+
+      const filteredPerfumes = allPerfumes.filter((p) =>
+        genderFilter.includes(p.gender)
       );
 
-      const perfumeList = filteredPerfumes
+      const perfumeContext = filteredPerfumes
         .map((p) => {
-          const notes = Array.isArray(p.notes) ? p.notes : [];
-          const noteStr = notes.length > 0 ? notes.slice(0, 2).join(", ") : "";
-          return `- ${p.name}: ${noteStr}`;
+          const notes = Array.isArray(p.notes)
+            ? p.notes.slice(0, 3).join(", ")
+            : "";
+          return `- ${p.name} (${p.brand}): ${notes}`;
         })
         .join("\n");
 
-      const context = `
-Mevcut Erkek/Unisex Parfümler:
-${perfumeList}
+      const conversationContext = conversationHistory
+        .slice(-6)
+        .map((m) => `${m.role === "user" ? "Müşteri" : "Mira"}: ${m.content}`)
+        .join("\n");
 
-KESİN KURALLAR:
-- MAX 60 KARAKTER! Çok kısa ol.
-- SADECE listeden öneri yap
-- Kadın parfümü önerme (Delina, Kirke vb. yasak)
-- 1 emoji yeter
-- Parfüm adı + 1-2 nota yaz, başka açıklama yapma
-`;
+      const profileContext =
+        userProfile.collectedInfo.length > 0
+          ? `\nMüşteri Profili: ${userProfile.collectedInfo.join(", ")}`
+          : "";
 
-      const prompt = `Sen "Mira" - Blue Perfumery'nin samimi parfüm danışmanı.
+      const prompt = `${MIRA_SYSTEM_PROMPT}
 
-${context}
+### MEVCUT PARFÜM KOLEKSİYONU:
+${perfumeContext}
+${profileContext}
+
+### SOHBET GEÇMİŞİ:
+${conversationContext}
 
 Müşteri: ${question}
 
-Mira (MAX 60 KARAKTER, sadece erkek/unisex parfüm öner, samimi ol):`;
+Mira (samimi, betimleyici dille, max 3 cümle):`;
 
       const response = await this.client!.messages.create({
         model: this.model,
-        max_tokens: 100, // Harf sınırı için token limiti düşürüldü
+        max_tokens: 250,
         messages: [{ role: "user", content: prompt }],
       });
 
       if (!response.content || response.content.length === 0) {
-        return { message: "Üzgünüm, şu an yanıt veremiyorum." };
+        return {
+          message:
+            "Üzgünüm, şu an yanıt veremiyorum. Birazdan tekrar dener misin? 💫",
+          userProfile,
+        };
       }
 
       const content = response.content[0];
       if (content.type !== "text") {
-        return { message: "Üzgünüm, şu an yanıt veremiyorum." };
+        return {
+          message:
+            "Üzgünüm, şu an yanıt veremiyorum. Birazdan tekrar dener misin? 💫",
+          userProfile,
+        };
       }
 
-      return { message: content.text };
+      return {
+        message: content.text,
+        userProfile,
+      };
     } catch (error: any) {
       console.error("Librarian Agent Error:", error);
       console.error("Error details:", {
