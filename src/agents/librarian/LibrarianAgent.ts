@@ -125,7 +125,7 @@ const MIRA_SYSTEM_PROMPT = `Sen "Mira" - Blue Perfumery'de çalışan, uzman ve 
 
 export class LibrarianAgent {
   private client: Anthropic | null = null;
-  private model: string = "claude-3-haiku-20240307"; // Hızlı ve ucuz
+  private model: string = "claude-3-5-haiku-20241022"; // Hızlı ve kaliteli
   private apiKeyMissing: boolean = false;
 
   constructor() {
@@ -187,6 +187,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       const response = await this.client!.messages.create({
         model: this.model,
         max_tokens: 1024,
+        temperature: 0.1, // Düşük sıcaklık = tutarlı cevaplar
         messages: [{ role: "user", content: prompt }],
       });
 
@@ -250,6 +251,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON array, başka bir şey yazm
       const response = await this.client!.messages.create({
         model: this.model,
         max_tokens: 1024,
+        temperature: 0.1, // Düşük sıcaklık = tutarlı cevaplar
         messages: [{ role: "user", content: prompt }],
       });
 
@@ -292,6 +294,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       const response = await this.client!.messages.create({
         model: this.model,
         max_tokens: 1024,
+        temperature: 0.1, // Düşük sıcaklık = tutarlı cevaplar
         messages: [{ role: "user", content: prompt }],
       });
 
@@ -1702,6 +1705,7 @@ Mira (samimi, betimleyici dille, max 3 cümle):`;
       const response = await this.client!.messages.create({
         model: this.model,
         max_tokens: 250,
+        temperature: 0.1, // Düşük sıcaklık = tutarlı, halüsinasyonsuz cevaplar
         messages: [{ role: "user", content: prompt }],
       });
 
