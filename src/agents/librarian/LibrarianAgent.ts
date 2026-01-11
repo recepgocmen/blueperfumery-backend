@@ -61,67 +61,52 @@ export interface PerfumeAnalysis {
 }
 
 // Mira'nın karakteri için zengin system prompt
-const MIRA_SYSTEM_PROMPT = `Sen "Mira" - Blue Perfumery'de çalışan, uzman ve nazik bir Koku Danışmanı (Scent Consultant) rolündesin. Görevin, müşterilere sadece parfüm satmak değil, onlara karakterlerine ve zevklerine en uygun imza kokuyu bulmalarında rehberlik etmektir.
+const MIRA_SYSTEM_PROMPT = `Sen "Mira" - Blue Perfumery'de çalışan, arkadaş canlısı bir Koku Danışmanısın. Müşterilerle gerçek bir arkadaş gibi sohbet et.
 
-### TEMEL DAVRANIŞ KURALLARI:
+### TEMEL KURAL: BAĞLAMI HATIRLA!
+- Müşteri daha önce "erkek parfümü" dediyse, tekrar cinsiyet SORMA
+- Müşteri "günlük kullanım" dediyse, tekrar kullanım ortamı SORMA
+- Sohbet geçmişini DİKKATLİCE oku ve zaten verilen bilgileri hatırla
+- ASLA aynı soruyu iki kez sorma
 
-1. **ACELE ETME:** Müşteri daha "Merhaba" dediğinde hemen liste sunma. Önce selamla ve nasıl bir arayışta olduğunu sor.
+### DOĞAL KONUŞMA ÖRNEKLERİ:
 
-2. **ADIM ADIM İLERLE:** Bir koku önermeden önce en az 2-3 soru sorarak müşteriyi tanı:
-   - Cinsiyet tercihi (kendisi için mi, hediye mi)
-   - Kullanım ortamı (günlük, iş, gece, özel gün)
-   - Sevdiği/sevmediği notalar
-   - Hafif mi, yoğun mu tercih
+**Örnek 1 - İyi akış:**
+Müşteri: Erkek parfümü arıyorum
+Mira: Harika! 💫 Peki bu kokuyu ne zaman kullanmayı düşünüyorsun - günlük iş için mi, özel geceler için mi?
 
-3. **SAMİMİ VE PROFESYONEL TON:** Hitap şeklin "Sen" olsun ve samimiyeti elden bırakma. Betimleyici dil kullan:
-   - ❌ "Bu parfümde gül var" 
-   - ✅ "Bu parfüm, sabah çiğiyle ıslanmış taze Isparta güllerinin ferahlığını teninize taşıyor"
+**Örnek 2 - Bilgi alındıktan sonra:**
+Müşteri: Günlük iş için lazım
+Mira: Anladım, ofis için ferah ama kalıcı bir şey lazım. ✨ Senin için birkaç harika seçenek var...
 
-4. **ALAKASIZ SORULARI REDDET:** Parfüm, kozmetik veya kişisel bakım dışı konularda nazikçe: "Ben bir koku uzmanıyım, sana sadece bu alanda en iyi deneyimi sunabilirim. Parfüm hakkında konuşalım mı?"
+**Örnek 3 - Geçiş ifadeleri kullan:**
+- "Harika!", "Süper!", "Tamam, anladım!"
+- "Güzel tercih!", "Çok iyi!"
+- Sonra soruya veya öneriye geç
 
-### DİYALOG AKIŞ ŞEMASI:
+### YASAKLAR:
+- ❌ Zaten bilinen bilgiyi tekrar sorma (cinsiyet, kullanım ortamı vb.)
+- ❌ Soru yağmuru yapma (mesaj başına max 1 soru)
+- ❌ Robotik, template cevaplar verme
+- ❌ Müşteri adına konuşma veya roleplay yapma
+- ❌ "*aksiyon*" formatı kullanma
+- ❌ "Mira:" veya "Müşteri:" etiketleri kullanma
 
-**Aşama 1 - KARŞILAMA:** Sıcak bir karşılama. Müşteriyi tanımaya yönelik bir soru.
-
-**Aşama 2 - PROFİLLEME:** Tarzını anlama:
-- Gündüz mü, gece mi kullanacak?
-- Odunsu mu, çiçeksi mi, ferah mı?
-- Ağır mı, hafif mi tercih?
-
-**Aşama 3 - ÖNERİ:** Eldeki bilgilerle 2-3 spesifik parfüm önerisi. Her önerinin NEDEN seçildiğini açıkla.
-
-**Aşama 4 - KAPANIŞ:** Seçenekler hakkında ne düşündüğünü sor.
-
-### BETİMLEYİCİ DİL ÖRNEKLERİ:
-
-- "Bu koku, sonbahar yaprakları arasında yürüyüş gibi..."
-- "Taze kesilmiş çimenlerin üzerine düşen yaz yağmuru..."  
-- "Gece yarısı okyanus esintisi gibi ferahlatıcı..."
-- "Sıcak bir kahve dükkanının o sarmalayıcı havası..."
-- "İlk bahar sabahında açan çiçeklerin o tatlı kokusu..."
-
-### KESİN YASAKLAR (ÇOK ÖNEMLİ):
-- ❌ Bilmediğin notalar hakkında uydurma bilgi verme
-- ❌ Her mesajda en fazla 1-2 soru sor (soru yağmuru yapma)
-- ❌ Robotik, tek kelimelik cevaplardan kaçın
-- ❌ Hemen ürün listesi dökme, önce müşteriyi tanı
-- ❌ **ASLA** müşteri adına konuşma veya yazma (örn: "Müşteri: ..." yazma)
-- ❌ **ASLA** roleplay formatı kullanma (örn: "*gülümseyerek*", "*samimi bir şekilde*")
-- ❌ **ASLA** aksiyon açıklamaları yazma (yıldız işaretli ifadeler)
-- ❌ **ASLA** diyalog simülasyonu yapma
-- ❌ **ASLA** "Mira:" veya "Müşteri:" gibi etiketler kullanma
-- ❌ Sadece kendi cevabını yaz, müşterinin ne diyeceğini tahmin etme
-
-### EMOJI KULLANIMI:
-- Ölçülü kullan (her mesajda 1-2 emoji yeterli)
-- Uygun emojiler: 💫 ✨ 🌸 💎 🌟 🌙 ☀️ 🍂 ❄️
+### KONU DIŞI MESAJLAR:
+Parfüm dışı konularda: "Özür dilerim, sadece parfüm konusunda yardımcı olabiliyorum."
+Sonra parfüm önerisi yapma, sadece özür dile.
 
 ### KONUŞMA TARZI:
-- Kısa ve akıcı cümleler (max 2-3 cümle)
-- Soru işaretlerini doğru kullan
-- Noktalama ve imla kurallarına dikkat et
-- Türkçe karakterleri doğru kullan
-- Doğrudan müşteriye hitap et, 3. şahıs kullanma`;
+- Samimi "sen" hitabı
+- Kısa cümleler (max 2-3 cümle)
+- Her mesajda 1 emoji yeterli
+- Doğal geçişler: "Anladım", "Harika", "Tamam"
+
+### BETİMLEYİCİ DİL:
+- "Sabah çiğiyle ıslanmış taze güllerin ferahlığı..."
+- "Sonbahar yaprakları arasında yürüyüş gibi..."
+- "Gece yarısı okyanus esintisi gibi ferahlatıcı..."
+- "Sıcak kahve dükkanının sarmalayıcı havası..."`;
 
 export class LibrarianAgent {
   private client: Anthropic | null = null;
@@ -860,7 +845,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         return {
           isAllowed: false,
           response:
-            "Ben Mira, parfüm konularında uzmanım! 💎 Bu konuda yardımcı olamam ama parfüm hakkında konuşalım mı?",
+            "Özür dilerim, bu konuda yardımcı olamıyorum. 🙏 Parfüm ile ilgili bir sorun varsa memnuniyetle yardımcı olurum!",
         };
       }
     }
@@ -992,34 +977,22 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       };
     }
 
-    // Eğer hiçbir parfüm kelimesi yoksa, konu dışı olabilir
+    // Eğer hiçbir parfüm kelimesi yoksa, konu dışı
     if (!hasRelevantKeyword) {
-      // Kısa mesajlar için (5-30 karakter) - muhtemelen anlamsız veya konu dışı
-      if (q.length >= 5 && q.length <= 30) {
-        return {
-          isAllowed: false,
-          response:
-            "Anladım 🤔 Parfüm konusunda yardımcı olabilirim! Erkek mi kadın mı parfümü arıyorsun?",
-        };
-      }
+      // Net özür mesajları - parfüm önerisi YAPMA
+      const offTopicResponses = [
+        "Özür dilerim, sadece parfüm konusunda yardımcı olabiliyorum. 🙏 Parfüm ile ilgili bir sorun varsa memnuniyetle yardımcı olurum!",
+        "Maalesef bu konuda yardımcı olamıyorum. 💫 Ben Mira, parfüm danışmanıyım - koku seçiminde yardımcı olmak isterim!",
+        "Bu konuda bilgim yok, üzgünüm. 🌸 Ama parfüm arıyorsan sana yardımcı olabilirim!",
+      ];
 
-      // Uzun mesajlar için (50+ karakter) - kesinlikle konu dışı
-      if (q.length > 50) {
-        return {
-          isAllowed: false,
-          response:
-            "Parfüm ve koku konularında yardımcı olabilirim 🌸 Sana özel bir koku bulmamı ister misin?",
-        };
-      }
+      const randomResponse =
+        offTopicResponses[Math.floor(Math.random() * offTopicResponses.length)];
 
-      // Orta uzunlukta mesajlar (30-50 karakter) - nazikçe yönlendir
-      if (q.length > 30) {
-        return {
-          isAllowed: false,
-          response:
-            "Parfüm konusunda yardımcı olabilirim 💎 Ne tür parfümler ilgini çekiyor?",
-        };
-      }
+      return {
+        isAllowed: false,
+        response: randomResponse,
+      };
     }
 
     return { isAllowed: true, response: "" };
@@ -1358,54 +1331,66 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
   }
 
   /**
-   * Profilleme sorusu üret
+   * Profilleme sorusu üret - Doğal ve bağlam farkında
    */
   private generateProfilingQuestion(
     profile: UserProfile,
     questionCount: number
   ): string | null {
-    // Maksimum 3 profilleme sorusu
-    if (questionCount >= 3 || profile.profilingComplete) {
+    // Maksimum 2 profilleme sorusu (daha hızlı öneriye geç)
+    if (questionCount >= 2 || profile.profilingComplete) {
       return null;
     }
 
-    const questions: string[] = [];
+    // Kaç bilgi toplandı?
+    const collectedCount = profile.collectedInfo.length;
 
+    // 2+ bilgi varsa profilleme tamamlandı sayılır
+    if (collectedCount >= 2) {
+      return null;
+    }
+
+    // Doğal geçiş ifadeleri
+    const transitions = [
+      "Harika! 💫",
+      "Tamam, anladım! ✨",
+      "Güzel tercih! 🌟",
+      "Süper! 💎",
+    ];
+    const randomTransition =
+      transitions[Math.floor(Math.random() * transitions.length)];
+
+    // ÖNCE: Cinsiyet bilgisi yoksa sor
     if (!profile.gender) {
-      questions.push(
-        "Kendine mi yoksa birine hediye olarak mı arıyorsun? Erkek mi kadın mı parfüm olsun? 💫"
-      );
+      const genderQuestions = [
+        "Erkek parfümü mü kadın parfümü mü arıyorsun? 💫",
+        "Kendine mi arıyorsun, birine hediye mi? Erkek mi kadın mı olsun?",
+      ];
+      return genderQuestions[Math.floor(Math.random() * genderQuestions.length)];
     }
 
-    if (!profile.occasion && profile.gender) {
-      questions.push(
-        "Harika! Peki bu kokuyu ne zaman kullanmayı düşünüyorsun? Günlük mü, iş için mi, yoksa özel geceler için mi? ✨"
-      );
+    // SONRA: Kullanım ortamı yoksa sor (cinsiyet varsa geçiş ile)
+    if (!profile.occasion) {
+      const occasionQuestions = [
+        `${randomTransition} Peki bu kokuyu ne zaman kullanmayı düşünüyorsun - günlük mü, iş için mi, özel geceler için mi?`,
+        `${randomTransition} Günlük kullanım için mi, yoksa özel anlar için mi arıyorsun?`,
+      ];
+      return occasionQuestions[
+        Math.floor(Math.random() * occasionQuestions.length)
+      ];
     }
 
-    if (!profile.intensity && profile.gender && profile.occasion) {
-      questions.push(
-        "Hafif ve ferahlatıcı bir koku mu tercih edersin, yoksa daha yoğun ve iz bırakan bir şey mi? 🌸"
-      );
+    // OPSIYONEL: Tarz/yoğunluk (sadece 1 bilgi varsa sor)
+    if (collectedCount === 1 && !profile.intensity) {
+      const styleQuestions = [
+        `${randomTransition} Ferah ve hafif mi tercih edersin, yoksa yoğun ve iz bırakan mı?`,
+        `${randomTransition} Taze ve enerjik bir koku mu, sarmalayıcı ve sıcak mı?`,
+      ];
+      return styleQuestions[Math.floor(Math.random() * styleQuestions.length)];
     }
 
-    if (!profile.season && profile.gender) {
-      questions.push(
-        "Hangi mevsimde kullanmak istiyorsun? Yaz sıcağı için mi, kış soğuğu için mi? ☀️❄️"
-      );
-    }
-
-    if (
-      !profile.personality &&
-      profile.gender &&
-      !profile.preferredNotes?.length
-    ) {
-      questions.push(
-        "Seni en iyi hangi kelime tanımlar: Enerjik mi, sakin mi, romantik mi, yoksa gizemli mi? 🌟"
-      );
-    }
-
-    return questions.length > 0 ? questions[0] : null;
+    // Yeterli bilgi toplandı, profilleme tamamlandı
+    return null;
   }
 
   /**
@@ -1589,30 +1574,35 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
             userProfile
           );
 
-          return {
+            return {
             message: `${perfume.name} harika bir seçim! 💫 ${poetricDesc}. ${perfume.price} TL.`,
-            recommendedProducts: [
-              { id: perfume.id, name: perfume.name, brand: perfume.brand },
-            ],
+              recommendedProducts: [
+                { id: perfume.id, name: perfume.name, brand: perfume.brand },
+              ],
             userProfile,
-          };
+            };
         }
       }
 
       // 5. Sorudan intent çıkar
       const intent = this.extractIntent(question);
 
-      // 6. Profilleme aşaması - henüz yeterli bilgi toplanmadıysa
+      // 6. Profilleme kontrolü - 2+ bilgi varsa öneriye geç
+      const collectedInfoCount = userProfile.collectedInfo.length;
+      const hasEnoughInfo = collectedInfoCount >= 2 || userProfile.profilingComplete;
+
+      // Profilleme aşaması - SADECE yeterli bilgi yoksa soru sor
       if (
-        !userProfile.profilingComplete &&
+        !hasEnoughInfo &&
         !intent.productName &&
-        !intent.isListRequest
+        !intent.isListRequest &&
+        !intent.isRecommendationRequest
       ) {
         const profilingQuestion = this.generateProfilingQuestion(
           userProfile,
-          messageCount
+          collectedInfoCount // messageCount yerine toplanan bilgi sayısını kullan
         );
-        if (profilingQuestion && messageCount < 4) {
+        if (profilingQuestion) {
           return {
             message: profilingQuestion,
             userProfile,
@@ -1703,8 +1693,8 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         }
       }
 
-      // 9. Profile göre öneri (yeterli bilgi toplandıysa)
-      if (userProfile.profilingComplete || intent.isRecommendationRequest) {
+      // 9. Profile göre öneri (yeterli bilgi toplandıysa veya istek varsa)
+      if (hasEnoughInfo || intent.isRecommendationRequest) {
         const recommendations = await this.getRecommendationsForProfile(
           userProfile
         );
@@ -1720,21 +1710,35 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
             })
             .join("\n\n");
 
-          const profileSummary =
-            userProfile.collectedInfo.length > 0
-              ? `Senin için ${userProfile.collectedInfo
-                  .slice(0, 2)
-                  .join(", ")
-                  .toLowerCase()} tercihlerine göre seçtim:`
-              : "Sana özel seçtiklerim:";
+          // Doğal geçiş ifadeleri
+          const transitions = [
+            "Harika, anladım! 💎",
+            "Tamam, çok güzel! ✨",
+            "Süper tercih! 🌟",
+          ];
+          const randomTransition =
+            transitions[Math.floor(Math.random() * transitions.length)];
 
-          return {
-            message: `${profileSummary} 💎\n\n${recText}\n\nHangisini denemek istersin?`,
-            recommendedProducts: recommendations.map((p) => ({
-              id: p.id,
-              name: p.name,
-              brand: p.brand,
-            })),
+          // Profil özeti oluştur
+          let profileSummary = "";
+          if (userProfile.collectedInfo.length > 0) {
+            const infoText = userProfile.collectedInfo
+              .slice(0, 2)
+              .map((info) => info.split(": ")[1] || info)
+              .join(", ")
+              .toLowerCase();
+            profileSummary = `${randomTransition} Senin için ${infoText} tercihlerine göre seçtim:`;
+          } else {
+            profileSummary = `${randomTransition} Sana özel seçtiklerim:`;
+          }
+
+        return {
+            message: `${profileSummary}\n\n${recText}\n\nHangisini denemek istersin?`,
+          recommendedProducts: recommendations.map((p) => ({
+            id: p.id,
+            name: p.name,
+            brand: p.brand,
+          })),
             userProfile,
           };
         }
