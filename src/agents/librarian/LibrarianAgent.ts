@@ -61,52 +61,36 @@ export interface PerfumeAnalysis {
 }
 
 // Mira'nın karakteri için zengin system prompt
-const MIRA_SYSTEM_PROMPT = `Sen "Mira" - Blue Perfumery'de çalışan, arkadaş canlısı bir Koku Danışmanısın. Müşterilerle gerçek bir arkadaş gibi sohbet et.
+const MIRA_SYSTEM_PROMPT = `Sen "Mira" - Blue Perfumery'de çalışan, arkadaş canlısı bir Koku Danışmanısın.
 
-### TEMEL KURAL: BAĞLAMI HATIRLA!
+### ⚠️ EN ÖNEMLİ KURAL - NOTA UYDURMA!
+1. SADECE aşağıda "MEVCUT PARFÜM KOLEKSİYONU" bölümünde yazılan notaları kullan
+2. Orada "Notalar: Belirtilmemiş" yazıyorsa, o parfümün notalarını BİLMİYORSUN demektir
+3. Bilmediğin notaları ASLA uydurma - sadece ürün adını söyle
+4. "zencefil", "bergamot" gibi notalar SADECE listede yazıyorsa söylenebilir
+
+### BAĞLAMI HATIRLA!
 - Müşteri daha önce "erkek parfümü" dediyse, tekrar cinsiyet SORMA
-- Müşteri "günlük kullanım" dediyse, tekrar kullanım ortamı SORMA
-- Sohbet geçmişini DİKKATLİCE oku ve zaten verilen bilgileri hatırla
 - ASLA aynı soruyu iki kez sorma
 
-### DOĞAL KONUŞMA ÖRNEKLERİ:
-
-**Örnek 1 - İyi akış:**
-Müşteri: Erkek parfümü arıyorum
-Mira: Harika! 💫 Peki bu kokuyu ne zaman kullanmayı düşünüyorsun - günlük iş için mi, özel geceler için mi?
-
-**Örnek 2 - Bilgi alındıktan sonra:**
-Müşteri: Günlük iş için lazım
-Mira: Anladım, ofis için ferah ama kalıcı bir şey lazım. ✨ Senin için birkaç harika seçenek var...
-
-**Örnek 3 - Geçiş ifadeleri kullan:**
-- "Harika!", "Süper!", "Tamam, anladım!"
-- "Güzel tercih!", "Çok iyi!"
-- Sonra soruya veya öneriye geç
+### DOĞAL KONUŞMA:
+- "Harika!", "Süper!", "Tamam!" geçişleri kullan
+- Kısa cümleler (max 2-3 cümle)
+- Samimi "sen" hitabı
+- Her mesajda 1 emoji yeterli
 
 ### YASAKLAR:
-- ❌ Zaten bilinen bilgiyi tekrar sorma (cinsiyet, kullanım ortamı vb.)
-- ❌ Soru yağmuru yapma (mesaj başına max 1 soru)
-- ❌ Robotik, template cevaplar verme
-- ❌ Müşteri adına konuşma veya roleplay yapma
-- ❌ "*aksiyon*" formatı kullanma
-- ❌ "Mira:" veya "Müşteri:" etiketleri kullanma
+❌ Listede OLMAYAN nota söyleme (bu çok önemli!)
+❌ Zaten bilinen bilgiyi tekrar sorma
+❌ Soru yağmuru yapma
+❌ Müşteri adına konuşma veya roleplay yapma
 
 ### KONU DIŞI MESAJLAR:
-Parfüm dışı konularda: "Özür dilerim, sadece parfüm konusunda yardımcı olabiliyorum."
-Sonra parfüm önerisi yapma, sadece özür dile.
+"Özür dilerim, sadece parfüm konusunda yardımcı olabiliyorum."
 
-### KONUŞMA TARZI:
-- Samimi "sen" hitabı
-- Kısa cümleler (max 2-3 cümle)
-- Her mesajda 1 emoji yeterli
-- Doğal geçişler: "Anladım", "Harika", "Tamam"
-
-### BETİMLEYİCİ DİL:
-- "Sabah çiğiyle ıslanmış taze güllerin ferahlığı..."
-- "Sonbahar yaprakları arasında yürüyüş gibi..."
-- "Gece yarısı okyanus esintisi gibi ferahlatıcı..."
-- "Sıcak kahve dükkanının sarmalayıcı havası..."`;
+### ÖNERİ YAPARKEN:
+Sadece koleksiyonda olan parfümleri öner.
+Nota bilgisi yoksa "harika bir koku" gibi genel ifadeler kullan, nota uydurma.`;
 
 export class LibrarianAgent {
   private client: Anthropic | null = null;
@@ -1366,7 +1350,9 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         "Erkek parfümü mü kadın parfümü mü arıyorsun? 💫",
         "Kendine mi arıyorsun, birine hediye mi? Erkek mi kadın mı olsun?",
       ];
-      return genderQuestions[Math.floor(Math.random() * genderQuestions.length)];
+      return genderQuestions[
+        Math.floor(Math.random() * genderQuestions.length)
+      ];
     }
 
     // SONRA: Kullanım ortamı yoksa sor (cinsiyet varsa geçiş ile)
@@ -1439,7 +1425,8 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
   }
 
   /**
-   * Betimleyici ürün açıklaması oluştur
+   * Betimleyici ürün açıklaması oluştur - VERİTABANINDAKİ GERÇEK NOTALARI KULLAN
+   * ⚠️ ASLA uydurma nota veya bilgi üretme!
    */
   private generatePoetricDescription(
     product: any,
@@ -1450,70 +1437,38 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       ? product.characteristics
       : [];
 
-    // Nota bazlı betimlemeler
-    const noteDescriptions: Record<string, string> = {
-      bergamot: "İtalya'nın güneşli bahçelerinden gelen taze bergamot",
-      vanilya: "sıcacık sarmalayan tatlı vanilya",
-      sandal: "Hint ormanlarından gelen egzotik sandal ağacı",
-      sedir: "görkemli sedir ormanlarının maskülen kokusu",
-      gül: "sabah çiğiyle ıslanmış Isparta gülleri",
-      yasemin: "gece açan beyaz yaseminlerin büyüleyici kokusu",
-      lavanta: "Provence tarlalarından esen lavanta esintisi",
-      amber: "antik çağlardan gelen sıcak amber",
-      misk: "tenle bütünleşen gizemli misk",
-      ud: "nadir bulunan değerli ud ağacı",
-    };
-
-    // Karakteristik bazlı betimlemeler
-    const charDescriptions: Record<string, string> = {
-      ferah: "yaz sabahı gibi canlandırıcı",
-      odunsu: "orman yürüyüşü gibi toprak kokulu",
-      çiçeksi: "bahar bahçesi gibi zarif",
-      tatlı: "bal gibi sarmalayıcı",
-      baharatlı: "oryantal pazarlar gibi egzotik",
-      oryantal: "bin bir gece masalları gibi gizemli",
-    };
-
     let description = "";
 
-    // Nota açıklamaları
-    for (const note of notes.slice(0, 2)) {
-      const noteLower = note.toLowerCase();
-      for (const [key, desc] of Object.entries(noteDescriptions)) {
-        if (noteLower.includes(key)) {
-          description += description ? ` ve ${desc}` : desc;
-          break;
-        }
+    // SADECE veritabanındaki gerçek notaları göster
+    if (notes.length > 0) {
+      const notesText = notes.slice(0, 4).join(", ");
+      description = notesText;
+    }
+
+    // Karakteristik varsa ekle
+    if (chars.length > 0) {
+      const charText = chars.slice(0, 2).join(", ").toLowerCase();
+      if (description) {
+        description += ` - ${charText}`;
+      } else {
+        description = charText;
       }
     }
 
-    // Karakteristik açıklaması
-    for (const char of chars.slice(0, 1)) {
-      const charLower = char.toLowerCase();
-      for (const [key, desc] of Object.entries(charDescriptions)) {
-        if (charLower.includes(key)) {
-          description += description
-            ? `. ${desc[0].toUpperCase() + desc.slice(1)}`
-            : desc;
-          break;
-        }
-      }
+    // Nota ve karakteristik YOKSA - ürün açıklamasından al
+    if (!description && product.description) {
+      const shortDesc = product.description.split(".")[0];
+      return shortDesc.length > 80
+        ? shortDesc.substring(0, 80) + "..."
+        : shortDesc;
     }
 
-    // Kullanım önerisi
-    if (profile.occasion) {
-      const occasionTexts: Record<string, string> = {
-        günlük: "Her güne güzel bir başlangıç için ideal",
-        iş: "Profesyonel ortamlarda güven veren bir seçim",
-        gece: "Geceleri iz bırakmak isteyenler için",
-        özel: "O özel anları unutulmaz kılacak bir koku",
-      };
-      if (occasionTexts[profile.occasion]) {
-        description += `. ${occasionTexts[profile.occasion]}`;
-      }
+    // Hiçbir bilgi YOKSA - nota uydurma!
+    if (!description) {
+      return "koleksiyonumuzda mevcut";
     }
 
-    return description || "Zarif ve etkileyici bir koku";
+    return description;
   }
 
   /**
@@ -1574,13 +1529,13 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
             userProfile
           );
 
-            return {
+          return {
             message: `${perfume.name} harika bir seçim! 💫 ${poetricDesc}. ${perfume.price} TL.`,
-              recommendedProducts: [
-                { id: perfume.id, name: perfume.name, brand: perfume.brand },
-              ],
+            recommendedProducts: [
+              { id: perfume.id, name: perfume.name, brand: perfume.brand },
+            ],
             userProfile,
-            };
+          };
         }
       }
 
@@ -1589,7 +1544,8 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
 
       // 6. Profilleme kontrolü - 2+ bilgi varsa öneriye geç
       const collectedInfoCount = userProfile.collectedInfo.length;
-      const hasEnoughInfo = collectedInfoCount >= 2 || userProfile.profilingComplete;
+      const hasEnoughInfo =
+        collectedInfoCount >= 2 || userProfile.profilingComplete;
 
       // Profilleme aşaması - SADECE yeterli bilgi yoksa soru sor
       if (
@@ -1732,13 +1688,13 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
             profileSummary = `${randomTransition} Sana özel seçtiklerim:`;
           }
 
-        return {
+          return {
             message: `${profileSummary}\n\n${recText}\n\nHangisini denemek istersin?`,
-          recommendedProducts: recommendations.map((p) => ({
-            id: p.id,
-            name: p.name,
-            brand: p.brand,
-          })),
+            recommendedProducts: recommendations.map((p) => ({
+              id: p.id,
+              name: p.name,
+              brand: p.brand,
+            })),
             userProfile,
           };
         }
@@ -1747,7 +1703,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       // 10. AI ile zengin yanıt üret (son çare)
       const allPerfumes = await Product.find({ status: "active" })
         .limit(15)
-        .select("name notes gender price characteristics brand")
+        .select("name notes gender price characteristics brand description")
         .lean();
 
       const genderFilter =
@@ -1759,12 +1715,18 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         genderFilter.includes(p.gender)
       );
 
+      // Detaylı ürün bilgisi oluştur - AI'ın SADECE bu bilgileri kullanması için
       const perfumeContext = filteredPerfumes
         .map((p) => {
-          const notes = Array.isArray(p.notes)
-            ? p.notes.slice(0, 3).join(", ")
-            : "";
-          return `- ${p.name} (${p.brand}): ${notes}`;
+          const notes =
+            Array.isArray(p.notes) && p.notes.length > 0
+              ? `Notalar: ${p.notes.join(", ")}`
+              : "Notalar: BİLİNMİYOR (bu parfümün notalarını UYDURMA!)";
+          const chars =
+            Array.isArray(p.characteristics) && p.characteristics.length > 0
+              ? `Özellikler: ${p.characteristics.join(", ")}`
+              : "";
+          return `- ${p.name}: ${notes}${chars ? `. ${chars}` : ""}`;
         })
         .join("\n");
 
