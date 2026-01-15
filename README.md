@@ -1,259 +1,131 @@
 # Blue Perfumery Backend API
 
-MongoDB + Express + TypeScript backend for Blue Perfumery application.
+REST API for Blue Perfumery e-commerce platform with AI-powered chatbot integration, built with Express.js, MongoDB, and TypeScript.
 
-## 🚀 Features
+🌐 **Live API**: [blueperfumery-backend.vercel.app/api](https://blueperfumery-backend.vercel.app/api)
 
-- **RESTful API** with Express.js
-- **MongoDB** database with Mongoose ODM
-- **TypeScript** for type safety
-- **CRUD Operations** for Products and Users
-- **Advanced Filtering** and pagination
-- **Error Handling** middleware
-- **CORS** enabled
-- **Security** with Helmet
-- **Request Logging** with Morgan
+## Tech Stack
 
-## 📦 Tech Stack
+| Technology    | Version | Purpose        |
+| ------------- | ------- | -------------- |
+| Node.js       | 18+     | Runtime        |
+| Express.js    | 4.18+   | Web Framework  |
+| MongoDB       | -       | Database       |
+| Mongoose      | 8.0+    | ODM            |
+| TypeScript    | 5.3+    | Type Safety    |
+| Anthropic SDK | 0.71+   | AI Integration |
+| JWT           | 9.0+    | Authentication |
 
-- **Node.js** - Runtime environment
-- **Express.js** - Web framework
-- **MongoDB** - NoSQL database
-- **Mongoose** - MongoDB ODM
-- **TypeScript** - Type safety
-- **bcryptjs** - Password hashing
-- **JWT** - Authentication (ready for implementation)
+## AI Integration
 
-## 🛠️ Installation
+### Librarian Agent - "Mira" (Claude 3.5 Haiku)
 
-### Prerequisites
+AI-powered perfume consultant that provides:
 
-- Node.js (v18 or higher)
-- MongoDB (local or MongoDB Atlas)
+- Personalized recommendations based on user profiling
+- Natural conversation with context awareness
+- Product search and similarity matching
+- Security filtering (profanity, off-topic detection)
 
-### Setup Steps
-
-1. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-2. **Create .env file**
-
-   ```bash
-   # Copy the example below to a new .env file
-   PORT=5000
-   NODE_ENV=development
-   MONGODB_URI=mongodb://localhost:27017/blueperfumery
-   JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-   JWT_EXPIRE=7d
-   CORS_ORIGIN=http://localhost:3000,http://localhost:5173
-   ```
-
-3. **Start MongoDB**
-
-   If using local MongoDB:
-
-   ```bash
-   mongod
-   ```
-
-   Or use MongoDB Atlas (cloud):
-
-   - Create account at mongodb.com/atlas
-   - Create cluster
-   - Get connection string
-   - Update MONGODB_URI in .env
-
-4. **Run Development Server**
-
-   ```bash
-   npm run dev
-   ```
-
-5. **Build for Production**
-   ```bash
-   npm run build
-   npm start
-   ```
-
-## 📚 API Endpoints
-
-### Health Check
-
+```typescript
+// POST /api/agent/chat
+{
+  "message": "Erkek parfümü arıyorum",
+  "conversationHistory": []
+}
 ```
-GET /api/health
+
+## Features
+
+- **RESTful API** - Products, Users, Chat Sessions
+- **AI Chatbot** - Claude Haiku integration for recommendations
+- **Advanced Filtering** - Gender, category, price, notes
+- **Pagination** - Efficient data loading
+- **Security** - Helmet, CORS, input validation
+
+## Getting Started
+
+```bash
+# Install dependencies
+npm install
+
+# Create .env file
+cat > .env << EOF
+PORT=5000
+NODE_ENV=development
+MONGODB_URI=mongodb://localhost:27017/blueperfumery
+JWT_SECRET=your-secret-key
+ANTHROPIC_API_KEY=your-anthropic-key
+CORS_ORIGIN=http://localhost:3000,http://localhost:5173
+EOF
+
+# Start development server
+npm run dev
 ```
+
+## API Endpoints
 
 ### Products
 
-| Method | Endpoint                   | Description        | Query Params                                                                                                      |
-| ------ | -------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| GET    | `/api/products`            | Get all products   | `page`, `limit`, `gender`, `category`, `brand`, `status`, `search`, `minPrice`, `maxPrice`, `sortBy`, `sortOrder` |
-| GET    | `/api/products/:id`        | Get product by ID  | -                                                                                                                 |
-| POST   | `/api/products`            | Create new product | -                                                                                                                 |
-| PUT    | `/api/products/:id`        | Update product     | -                                                                                                                 |
-| DELETE | `/api/products/:id`        | Delete product     | -                                                                                                                 |
-| GET    | `/api/products/brands`     | Get all brands     | -                                                                                                                 |
-| GET    | `/api/products/categories` | Get all categories | -                                                                                                                 |
+| Method | Endpoint            | Description                  |
+| ------ | ------------------- | ---------------------------- |
+| GET    | `/api/products`     | List products (with filters) |
+| GET    | `/api/products/:id` | Get product by ID            |
+| POST   | `/api/products`     | Create product               |
+| PUT    | `/api/products/:id` | Update product               |
+| DELETE | `/api/products/:id` | Delete product               |
 
 ### Users
 
-| Method | Endpoint         | Description     | Query Params                                                       |
-| ------ | ---------------- | --------------- | ------------------------------------------------------------------ |
-| GET    | `/api/users`     | Get all users   | `page`, `limit`, `role`, `status`, `search`, `sortBy`, `sortOrder` |
-| GET    | `/api/users/:id` | Get user by ID  | -                                                                  |
-| POST   | `/api/users`     | Create new user | -                                                                  |
-| PUT    | `/api/users/:id` | Update user     | -                                                                  |
-| DELETE | `/api/users/:id` | Delete user     | -                                                                  |
+| Method | Endpoint         | Description    |
+| ------ | ---------------- | -------------- |
+| GET    | `/api/users`     | List users     |
+| GET    | `/api/users/:id` | Get user by ID |
+| POST   | `/api/users`     | Create user    |
+| PUT    | `/api/users/:id` | Update user    |
+| DELETE | `/api/users/:id` | Delete user    |
 
-## 🔄 Data Migration
+### AI Agent
 
-To migrate existing perfume data from frontend to database:
+| Method | Endpoint             | Description        |
+| ------ | -------------------- | ------------------ |
+| POST   | `/api/agent/chat`    | Chat with Mira AI  |
+| GET    | `/api/chat-sessions` | List chat sessions |
+| POST   | `/api/chat-sessions` | Save chat message  |
 
-```bash
-npm run migrate
-```
-
-This will:
-
-1. Connect to MongoDB
-2. Clear existing products (if any)
-3. Import all perfumes from frontend data
-4. Create indexes
-
-## 📂 Project Structure
+## Project Structure
 
 ```
-blueperfumery-backend/
-├── src/
-│   ├── config/          # Database configuration
-│   ├── controllers/     # Route controllers
-│   ├── middleware/      # Express middleware
-│   ├── models/          # Mongoose models
-│   ├── routes/          # API routes
-│   ├── types/           # TypeScript types
-│   ├── utils/           # Utility functions
-│   └── index.ts         # App entry point
-├── .env                 # Environment variables (create this!)
-├── package.json
-├── tsconfig.json
-└── README.md
+src/
+├── agents/             # AI Agents
+│   └── librarian/      # Mira - Perfume Consultant
+├── controllers/        # Route handlers
+├── models/             # Mongoose models
+├── routes/             # API routes
+├── middleware/         # Express middleware
+├── utils/              # Utility functions
+└── config/             # Database config
 ```
 
-## 🔐 Environment Variables
+## Environment Variables
 
-| Variable      | Description               | Default                                       |
-| ------------- | ------------------------- | --------------------------------------------- |
-| `PORT`        | Server port               | `5000`                                        |
-| `NODE_ENV`    | Environment               | `development`                                 |
-| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/blueperfumery`     |
-| `JWT_SECRET`  | JWT secret key            | -                                             |
-| `JWT_EXPIRE`  | JWT expiration time       | `7d`                                          |
-| `CORS_ORIGIN` | Allowed CORS origins      | `http://localhost:3000,http://localhost:5173` |
+| Variable            | Description                 |
+| ------------------- | --------------------------- |
+| `PORT`              | Server port (default: 5000) |
+| `MONGODB_URI`       | MongoDB connection string   |
+| `JWT_SECRET`        | JWT signing key             |
+| `ANTHROPIC_API_KEY` | Claude API key              |
+| `CORS_ORIGIN`       | Allowed origins             |
 
-## 📝 Example API Requests
+## Scripts
 
-### Get Products with Filters
+| Command           | Description             |
+| ----------------- | ----------------------- |
+| `npm run dev`     | Start dev server        |
+| `npm run build`   | Compile TypeScript      |
+| `npm start`       | Start production server |
+| `npm run migrate` | Migrate data to DB      |
 
-```bash
-GET /api/products?gender=male&category=luxury&page=1&limit=10
-```
-
-### Create Product
-
-```bash
-POST /api/products
-Content-Type: application/json
-
-{
-  "id": "unique-id",
-  "name": "Product Name",
-  "brand": "Brand Name",
-  "description": "Description",
-  "price": 1000,
-  "ml": 50,
-  "gender": "unisex",
-  "category": "luxury",
-  "stock": 10,
-  "sku": "SKU-001",
-  "notes": ["note1", "note2"],
-  "characteristics": ["char1", "char2"],
-  "ageRange": { "min": 20, "max": 45 }
-}
-```
-
-## 🤝 Integration with Frontend & Admin Panel
-
-### Frontend (Next.js)
-
-Update your API calls to use: `http://localhost:5000/api`
-
-### Admin Panel (React)
-
-Update your API configuration to point to: `http://localhost:5000/api`
-
-## 📊 Response Format
-
-### Success Response
-
-```json
-{
-  "success": true,
-  "data": {},
-  "message": "Optional success message"
-}
-```
-
-### Error Response
-
-```json
-{
-  "success": false,
-  "error": "Error message"
-}
-```
-
-### Paginated Response
-
-```json
-{
-  "success": true,
-  "data": [],
-  "pagination": {
-    "total": 100,
-    "page": 1,
-    "limit": 20,
-    "totalPages": 5
-  }
-}
-```
-
-## 🐛 Troubleshooting
-
-### MongoDB Connection Error
-
-- Check if MongoDB is running
-- Verify MONGODB_URI in .env
-- Check network/firewall settings
-
-### Port Already in Use
-
-- Change PORT in .env
-- Kill process using the port: `lsof -ti:5000 | xargs kill -9`
-
-## 📝 TODO
-
-- [ ] Implement JWT authentication
-- [ ] Add role-based access control
-- [ ] Add order management
-- [ ] Add analytics endpoints
-- [ ] Add file upload for images
-- [ ] Add unit tests
-- [ ] Add API documentation (Swagger)
-
-## 📄 License
+## License
 
 ISC
-
