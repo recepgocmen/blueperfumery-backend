@@ -109,6 +109,17 @@ const productSchema = new Schema<IProductDocument>(
     shopierLink: {
       type: String,
     },
+    // Vector Search için embedding field
+    embedding: {
+      type: [Number],
+      default: undefined,
+      index: false, // Vector index ayrıca oluşturulacak
+    },
+    // Embedding oluşturulduğunda kullanılan metin
+    embeddingText: {
+      type: String,
+      default: undefined,
+    },
   },
   {
     timestamps: true,

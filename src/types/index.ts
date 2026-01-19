@@ -45,6 +45,9 @@ export interface IProduct {
     max: number;
   };
   shopierLink?: string;
+  // Vector Search için embedding
+  embedding?: number[];
+  embeddingText?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -67,4 +70,3 @@ export interface PaginatedResponse<T> {
     totalPages: number;
   };
 }
-

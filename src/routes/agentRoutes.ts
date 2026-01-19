@@ -55,9 +55,85 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
+// ============================================
+// GÜNLÜK KOTA SİSTEMİ - Maliyet Optimizasyonu
+// ============================================
+const DAILY_MESSAGE_LIMIT = 5; // Günlük maksimum mesaj sayısı
+
+interface DailyQuota {
+  count: number;
+  date: string; // YYYY-MM-DD format
+}
+
+const dailyQuotas = new Map<string, DailyQuota>();
+
+/**
+ * Visitor ID bazlı günlük kota kontrolü
+ * @returns { allowed: boolean, remaining: number, dailyLimitExceeded: boolean }
+ */
+function checkDailyQuota(visitorId: string): {
+  allowed: boolean;
+  remaining: number;
+  dailyLimitExceeded: boolean;
+} {
+  const today = new Date().toISOString().split("T")[0];
+  const quota = dailyQuotas.get(visitorId);
+
+  // İlk istek veya yeni gün
+  if (!quota || quota.date !== today) {
+    dailyQuotas.set(visitorId, { count: 1, date: today });
+    return {
+      allowed: true,
+      remaining: DAILY_MESSAGE_LIMIT - 1,
+      dailyLimitExceeded: false,
+    };
+  }
+
+  // Günlük limit aşıldı
+  if (quota.count >= DAILY_MESSAGE_LIMIT) {
+    return {
+      allowed: false,
+      remaining: 0,
+      dailyLimitExceeded: true,
+    };
+  }
+
+  // İsteği say
+  quota.count++;
+  dailyQuotas.set(visitorId, quota);
+
+  return {
+    allowed: true,
+    remaining: DAILY_MESSAGE_LIMIT - quota.count,
+    dailyLimitExceeded: false,
+  };
+}
+
+// Eski günlük kotaları temizle (her gece yarısı için)
+function cleanupOldQuotas(): void {
+  const today = new Date().toISOString().split("T")[0];
+  const keysToDelete: string[] = [];
+
+  dailyQuotas.forEach((value, key) => {
+    if (value.date !== today) {
+      keysToDelete.push(key);
+    }
+  });
+
+  keysToDelete.forEach((key) => dailyQuotas.delete(key));
+
+  if (keysToDelete.length > 0) {
+    console.log(`🧹 Cleaned up ${keysToDelete.length} old daily quotas`);
+  }
+}
+
+// Her saat başı eski kotaları temizle
+setInterval(cleanupOldQuotas, 60 * 60 * 1000);
+
 /**
  * POST /api/agent/chat
  * Serbest soru-cevap - Conversation History destekli
+ * Günlük kota sistemi ile maliyet optimizasyonu
  */
 router.post("/chat", async (req: Request, res: Response): Promise<void> => {
   const startTime = Date.now();
@@ -72,7 +148,12 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
       },
     });
 
-    const { message, perfumeId, conversationHistory = [] } = req.body;
+    const {
+      message,
+      perfumeId,
+      conversationHistory = [],
+      visitorId,
+    } = req.body;
 
     // IP adresini al (proxy desteği ile)
     const clientIp =
@@ -82,10 +163,14 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
       req.socket.remoteAddress ||
       "unknown";
 
+    // Visitor ID: Frontend'den gelen veya IP bazlı
+    const visitorIdentifier = visitorId || `ip_${clientIp}`;
+
     console.log("🔍 Request validation:", {
       message,
       perfumeId,
       clientIp,
+      visitorId: visitorIdentifier,
       conversationHistoryLength: conversationHistory.length,
     });
 
@@ -107,7 +192,7 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Conversation history validasyonu
+    // Conversation history validasyonu - 6 mesaja düşürüldü (maliyet optimizasyonu)
     const validHistory = Array.isArray(conversationHistory)
       ? conversationHistory
           .filter(
@@ -117,10 +202,10 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
               typeof m.content === "string" &&
               ["user", "assistant"].includes(m.role)
           )
-          .slice(-10) // Son 10 mesaj
+          .slice(-6) // Son 6 mesaj (10'dan düşürüldü - token tasarrufu)
       : [];
 
-    // Rate limit kontrolü
+    // Rate limit kontrolü (dakikalık)
     if (!checkRateLimit(clientIp)) {
       console.warn("⚠️ Rate limit exceeded for IP:", clientIp);
       res.status(429).json({
@@ -130,18 +215,41 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // GÜNLÜK KOTA KONTROLÜ
+    const quotaCheck = checkDailyQuota(visitorIdentifier);
+
+    if (!quotaCheck.allowed) {
+      console.warn(`⚠️ Daily limit exceeded for visitor: ${visitorIdentifier}`);
+      res.status(429).json({
+        success: false,
+        error: "Günlük soru limitine ulaştın! Yarın tekrar deneyebilirsin.",
+        code: "DAILY_LIMIT_EXCEEDED",
+        dailyLimitExceeded: true,
+        remaining: 0,
+      });
+      return;
+    }
+
+    console.log(
+      `📊 Quota: ${quotaCheck.remaining} mesaj kaldı (visitor: ${visitorIdentifier})`
+    );
+
     console.log("🤖 Getting Librarian Agent...");
     const librarian = getLibrarianAgent();
 
-    console.log("💬 Calling askAboutPerfume with conversation history...");
-    const response = await librarian.askAboutPerfume(
-      message,
-      perfumeId,
-      validHistory
-    );
+    // HİBRİT SİSTEM: Soru karmaşıklığına göre model seç
+    console.log("💬 Calling askWithHybridSystem...");
+    const response = await librarian.askWithHybridSystem(message, validHistory);
 
     const duration = Date.now() - startTime;
-    console.log(`✅ Chat response generated in ${duration}ms`);
+    const modelEmoji = response.modelUsed === "sonnet" ? "🚀" : "⚡";
+    console.log(
+      `✅ ${modelEmoji} Chat response generated in ${duration}ms (${
+        response.modelUsed
+      }${
+        response.toolsUsed ? `, tools: ${response.toolsUsed.join(", ")}` : ""
+      })`
+    );
 
     res.status(200).json({
       success: true,
@@ -149,7 +257,12 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
         message: response.message,
         recommendedProducts: response.recommendedProducts || [],
         userProfile: response.userProfile,
+        modelUsed: response.modelUsed,
+        toolsUsed: response.toolsUsed,
         timestamp: new Date().toISOString(),
+        // Kota bilgisi
+        remaining: quotaCheck.remaining,
+        dailyLimit: DAILY_MESSAGE_LIMIT,
       },
     });
   } catch (error: any) {

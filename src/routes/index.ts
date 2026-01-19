@@ -3,6 +3,7 @@ import productRoutes from "./productRoutes";
 import userRoutes from "./userRoutes";
 import agentRoutes from "./agentRoutes";
 import chatSessionRoutes from "./chatSessionRoutes";
+import promptRoutes from "./promptRoutes";
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use("/products", productRoutes);
 router.use("/users", userRoutes);
 router.use("/agent", agentRoutes);
 router.use("/chat-sessions", chatSessionRoutes);
+router.use("/prompts", promptRoutes);
 
 export default router;

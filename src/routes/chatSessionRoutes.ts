@@ -1,5 +1,16 @@
 import express, { Request, Response } from "express";
 import { ChatSession } from "../models/ChatSession";
+import {
+  getOverview,
+  getDeviceStats,
+  getBrowserStats,
+  getHourlyStats,
+  getDailyStats,
+  getTopRecommendations,
+  getCommonQuestions,
+  getConversionStats,
+  getFullAnalytics,
+} from "../services/analyticsService";
 
 const router = express.Router();
 
@@ -225,37 +236,200 @@ router.get(
   "/stats/overview",
   async (_req: Request, res: Response): Promise<void> => {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const [
-        totalSessions,
-        todaySessions,
-        totalMessages,
-        uniqueVisitors,
-        activeSessions,
-      ] = await Promise.all([
-        ChatSession.countDocuments(),
-        ChatSession.countDocuments({ createdAt: { $gte: today } }),
-        ChatSession.aggregate([
-          { $group: { _id: null, total: { $sum: "$messageCount" } } },
-        ]),
-        ChatSession.distinct("visitorId").then((arr) => arr.length),
-        ChatSession.countDocuments({ isActive: true }),
-      ]);
-
+      const overview = await getOverview();
       res.json({
         success: true,
-        data: {
-          totalSessions,
-          todaySessions,
-          totalMessages: totalMessages[0]?.total || 0,
-          uniqueVisitors,
-          activeSessions,
-        },
+        data: overview,
       });
     } catch (error) {
       console.error("Get chat stats error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Sunucu hatası",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/chat-sessions/stats/full
+ * Tüm analytics verileri
+ */
+router.get(
+  "/stats/full",
+  async (_req: Request, res: Response): Promise<void> => {
+    try {
+      const analytics = await getFullAnalytics();
+      res.json({
+        success: true,
+        data: analytics,
+      });
+    } catch (error) {
+      console.error("Get full analytics error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Sunucu hatası",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/chat-sessions/stats/devices
+ * Cihaz istatistikleri
+ */
+router.get(
+  "/stats/devices",
+  async (_req: Request, res: Response): Promise<void> => {
+    try {
+      const deviceStats = await getDeviceStats();
+      res.json({
+        success: true,
+        data: deviceStats,
+      });
+    } catch (error) {
+      console.error("Get device stats error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Sunucu hatası",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/chat-sessions/stats/browsers
+ * Tarayıcı istatistikleri
+ */
+router.get(
+  "/stats/browsers",
+  async (_req: Request, res: Response): Promise<void> => {
+    try {
+      const browserStats = await getBrowserStats();
+      res.json({
+        success: true,
+        data: browserStats,
+      });
+    } catch (error) {
+      console.error("Get browser stats error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Sunucu hatası",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/chat-sessions/stats/hourly
+ * Saat bazlı dağılım
+ */
+router.get(
+  "/stats/hourly",
+  async (_req: Request, res: Response): Promise<void> => {
+    try {
+      const hourlyStats = await getHourlyStats();
+      res.json({
+        success: true,
+        data: hourlyStats,
+      });
+    } catch (error) {
+      console.error("Get hourly stats error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Sunucu hatası",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/chat-sessions/stats/daily
+ * Günlük istatistikler
+ */
+router.get(
+  "/stats/daily",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const days = parseInt(req.query.days as string) || 30;
+      const dailyStats = await getDailyStats(days);
+      res.json({
+        success: true,
+        data: dailyStats,
+      });
+    } catch (error) {
+      console.error("Get daily stats error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Sunucu hatası",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/chat-sessions/stats/top-recommendations
+ * En çok önerilen ürünler
+ */
+router.get(
+  "/stats/top-recommendations",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+      const topRecommendations = await getTopRecommendations(limit);
+      res.json({
+        success: true,
+        data: topRecommendations,
+      });
+    } catch (error) {
+      console.error("Get top recommendations error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Sunucu hatası",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/chat-sessions/stats/common-questions
+ * Sık sorulan sorular
+ */
+router.get(
+  "/stats/common-questions",
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 20;
+      const commonQuestions = await getCommonQuestions(limit);
+      res.json({
+        success: true,
+        data: commonQuestions,
+      });
+    } catch (error) {
+      console.error("Get common questions error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Sunucu hatası",
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/chat-sessions/stats/conversion
+ * Conversion istatistikleri
+ */
+router.get(
+  "/stats/conversion",
+  async (_req: Request, res: Response): Promise<void> => {
+    try {
+      const conversionStats = await getConversionStats();
+      res.json({
+        success: true,
+        data: conversionStats,
+      });
+    } catch (error) {
+      console.error("Get conversion stats error:", error);
       res.status(500).json({
         success: false,
         error: "Sunucu hatası",

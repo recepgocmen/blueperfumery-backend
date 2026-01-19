@@ -102,6 +102,10 @@ const startServer = async () => {
       console.log(`   - POST   /api/agent/chat`);
       console.log(`   - POST   /api/agent/analyze`);
       console.log(`   - POST   /api/agent/similar`);
+      console.log(`   - GET    /api/prompts`);
+      console.log(`   - POST   /api/prompts`);
+      console.log(`   - PUT    /api/prompts/:key`);
+      console.log(`   - DELETE /api/prompts/:key`);
       console.log(`\n✨ Ready to serve requests!\n`);
     });
   } catch (error) {
