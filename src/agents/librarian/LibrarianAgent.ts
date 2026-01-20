@@ -3,24 +3,10 @@
  *
  * Blue Perfumery'nin uzman parfüm danışmanı Mira.
  * Müşterilerle samimi sohbet eder, profil oluşturur ve kişiselleştirilmiş öneriler sunar.
- *
- * HİBRİT SİSTEM:
- * - Basit sorular → Claude Haiku (hızlı, ucuz)
- * - Karmaşık sorular → Claude Sonnet + Tools (güçlü, pahalı)
- *
- * RAG (Retrieval-Augmented Generation) destekli - daha doğru ve bağlamsal cevaplar.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
 import { Product } from "../../models/Product";
-import {
-  retrieveRelevantProducts,
-  recommendByProfile,
-  RAGContext,
-} from "../../services/ragService";
-import { analyzeWithContext, QueryAnalysis } from "./queryRouter";
-import { PERFUME_TOOLS, ToolName } from "./toolDefinitions";
-import { executeTool, ToolResult } from "./toolExecutor";
 
 // Conversation mesaj tipi
 export interface ConversationMessage {
@@ -95,33 +81,7 @@ const MIRA_SYSTEM_PROMPT = `Sen "Mira" - Blue Perfumery'nin koku danışmanısı
 - Doğal geçişler: "Harika!", "Süper!", "Çok güzel!"
 - Soru sorarken merak et, sorgu yapma
 
-## ⚠️ ÖNEMLİ: HEMEN ÖNERİ YAPMA!
-Müşteriyi yeterince tanımadan ASLA parfüm önerme. Minimum şu bilgileri öğren:
-1. Kim için arıyor? (kendisi mi, hediye mi?)
-2. Cinsiyet tercihi (erkek/kadın/unisex)
-3. Kullanım zamanı (gündüz/gece/özel gün)
-4. Koku tarzı tercihi (taze mi, ağır mı? çiçeksi mi, odunsu mu?)
-
-Sadece "erkek parfümü" veya "kadın parfümü" demesiyle hemen öneri YAPMA!
-Örnek yanlış: Kullanıcı "Erkek parfümü arıyorum" dedi → Hemen parfüm önerdin ❌
-Örnek doğru: Kullanıcı "Erkek parfümü arıyorum" dedi → "Harika! 💫 Kendine mi arıyorsun yoksa birine hediye mi? Günlük mü yoksa özel günler için mi düşünüyorsun?" ✅
-
-## 📝 KONUŞMA AKIŞI (SIRASI ÖNEMLİ!)
-1. **Tanışma** (1-2 mesaj): Kim için, neden arıyor
-   - "Kendine mi arıyorsun yoksa birine hediye mi?"
-   
-2. **Kullanım Amacı** (1 mesaj): Ne zaman kullanacak
-   - "Günlük kullanım için mi, yoksa özel günler için mi?"
-   
-3. **Tarz Tercihi** (1 mesaj): Koku karakteri
-   - "Taze ve ferah kokular mı hoşuna gider, yoksa daha ağır ve karizmatik mi?"
-   
-4. **Öneri** (minimum 3 soru sorduktan sonra!): Hikayeli anlatım
-   - Şimdi artık güvenle öneri yapabilirsin
-   
-5. **Kapanış**: Denemeye teşvik, alternatif sun
-
-## 🎯 SATIŞ TEKNİKLERİ (öneri yaparken kullan)
+## 🎯 SATIŞ TEKNİKLERİ (doğal şekilde kullan)
 - **Hikaye anlat**: "Bu kokuyu sürdüğünde sanki..."
 - **Sosyal kanıt**: "Bu hafta en çok tercih edilen..."
 - **Fayda vurgula**: "Uzun süre kalıcı, gün boyu seninle"
@@ -139,13 +99,19 @@ Sadece "erkek parfümü" veya "kadın parfümü" demesiyle hemen öneri YAPMA!
 2. "Notalar: Belirtilmemiş" ise nota bilgisi verme
 3. Aynı soruyu iki kez sorma - bağlamı hatırla
 4. Müşteri yerine konuşma veya roleplay yapma
-5. MİNİMUM 3 SORU SOR ÖNCE, SONRA ÖNERİ YAP!
 
 ## 🚫 KONU DIŞI DURUMLAR (zarif yönlendir)
 Konu dışı sorularda:
 - "Ah, keşke bu konuda da uzman olsam! 😊 Ama benim tutkum kokular. Şimdi sana özel bir şey bulalım mı?"
 - "Güzel bir soru! Ben parfüm dünyasının uzmanıyım. Sana harika bir koku önerebilir miyim?"
 - ASLA sert reddetme, nazikçe parfüme yönlendir
+
+## 📝 KONUŞMA AKIŞI
+1. Tanışma: Kim için, neden arıyor
+2. Hayat tarzı: Ne zaman kullanacak, ortam
+3. Koku geçmişi: Şu an ne kullanıyor, nelerden hoşlanıyor
+4. Öneri: Hikayeli, duygusal bağ kuran anlatım
+5. Kapanış: Denemeye teşvik, alternatif sun
 
 ## 🎁 ÖNERİ YAPARKEN
 - Koleksiyonda olanları öner
@@ -155,10 +121,7 @@ Konu dışı sorularda:
 
 export class LibrarianAgent {
   private client: Anthropic | null = null;
-  // HİBRİT SİSTEM: İki model
-  private haikuModel: string = "claude-3-5-haiku-20241022"; // Basit sorular için (ucuz)
-  private sonnetModel: string = "claude-sonnet-4-5-20250929"; // Karmaşık sorular için (güçlü) - Güncel Sonnet 4.5
-  private model: string = this.haikuModel; // Varsayılan (legacy uyumluluk)
+  private model: string = "claude-3-5-haiku-20241022"; // Hızlı ve kaliteli
   private apiKeyMissing: boolean = false;
 
   constructor() {
@@ -171,164 +134,6 @@ export class LibrarianAgent {
     } else {
       this.client = new Anthropic({ apiKey });
     }
-  }
-
-  /**
-   * Hibrit sistem ile soru cevaplanır
-   * Basit sorular → Haiku
-   * Karmaşık sorular → Sonnet + Tools
-   */
-  async askWithHybridSystem(
-    question: string,
-    conversationHistory: ConversationMessage[] = [],
-    userProfile?: UserProfile
-  ): Promise<{
-    message: string;
-    recommendedProducts?: Array<{ id: string; name: string; brand: string }>;
-    userProfile?: UserProfile;
-    modelUsed: "haiku" | "sonnet";
-    toolsUsed?: string[];
-  }> {
-    this.checkApiKey();
-
-    // Query analizi yap
-    const queryAnalysis = analyzeWithContext(question, conversationHistory.length);
-    console.log(`🔍 Query Analysis: ${queryAnalysis.complexity} (${queryAnalysis.reason})`);
-
-    if (queryAnalysis.complexity === "complex") {
-      // Sonnet + Tools kullan
-      return await this.askWithSonnetTools(question, conversationHistory, userProfile, queryAnalysis);
-    } else {
-      // Haiku kullan (mevcut sistem)
-      const result = await this.askAboutPerfume(question, undefined, conversationHistory);
-      return {
-        ...result,
-        modelUsed: "haiku",
-      };
-    }
-  }
-
-  /**
-   * Sonnet + Tools ile karmaşık soruları cevapla
-   */
-  private async askWithSonnetTools(
-    question: string,
-    conversationHistory: ConversationMessage[],
-    userProfile?: UserProfile,
-    queryAnalysis?: QueryAnalysis
-  ): Promise<{
-    message: string;
-    recommendedProducts?: Array<{ id: string; name: string; brand: string }>;
-    userProfile?: UserProfile;
-    modelUsed: "haiku" | "sonnet";
-    toolsUsed?: string[];
-  }> {
-    const toolsUsed: string[] = [];
-
-    // Conversation history'yi Anthropic formatına çevir
-    const messages: Anthropic.MessageParam[] = conversationHistory.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
-
-    // Yeni mesajı ekle
-    messages.push({
-      role: "user",
-      content: question,
-    });
-
-    // İlk API çağrısı - tool kullanımına izin ver
-    // MALİYET OPTİMİZASYONU: max_tokens 1024 -> 512
-    let response = await this.client!.messages.create({
-      model: this.sonnetModel,
-      max_tokens: 512, // 1024'ten düşürüldü - maliyet optimizasyonu
-      system: MIRA_SYSTEM_PROMPT + `\n\n## TOOL KULLANIMI
-Sana verilen tool'ları kullanarak veritabanından bilgi alabilirsin.
-Önce tool ile bilgi al, sonra kullanıcıya doğal ve samimi bir dille cevap ver.
-Tool sonuçlarını olduğu gibi gösterme, bilgiyi işleyip güzel bir cevaba dönüştür.
-KISA VE ÖZ CEVAP VER - maksimum 3-4 cümle.`,
-      tools: PERFUME_TOOLS,
-      messages,
-    });
-
-    // Tool kullanımı döngüsü
-    while (response.stop_reason === "tool_use") {
-      const toolUseBlocks = response.content.filter(
-        (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
-      );
-
-      const toolResults: Anthropic.ToolResultBlockParam[] = [];
-
-      for (const toolUse of toolUseBlocks) {
-        console.log(`🔧 Tool çağrılıyor: ${toolUse.name}`);
-        toolsUsed.push(toolUse.name);
-
-        // Tool'u çalıştır
-        const result = await executeTool(
-          toolUse.name as ToolName,
-          toolUse.input as Record<string, any>
-        );
-
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: toolUse.id,
-          content: JSON.stringify(result),
-        });
-      }
-
-      // Tool sonuçlarıyla tekrar API'yi çağır
-      messages.push({
-        role: "assistant",
-        content: response.content,
-      });
-
-      messages.push({
-        role: "user",
-        content: toolResults,
-      });
-
-      response = await this.client!.messages.create({
-        model: this.sonnetModel,
-        max_tokens: 512, // 1024'ten düşürüldü - maliyet optimizasyonu
-        system: MIRA_SYSTEM_PROMPT,
-        tools: PERFUME_TOOLS,
-        messages,
-      });
-    }
-
-    // Final cevabı çıkar
-    const textBlock = response.content.find(
-      (block): block is Anthropic.TextBlock => block.type === "text"
-    );
-
-    const message = textBlock?.text || "Üzgünüm, bir sorun oluştu. 💫";
-
-    // Önerilen ürünleri çıkar (tool sonuçlarından)
-    let recommendedProducts: Array<{ id: string; name: string; brand: string }> = [];
-
-    // Tool sonuçlarından ürünleri çıkarmaya çalış
-    if (toolsUsed.includes("recommend_perfumes") || toolsUsed.includes("search_perfumes")) {
-      // Basit bir yaklaşım: mesajda geçen ürün isimlerini bul
-      const allProducts = await Product.find({ status: "active" }).select("id name brand").lean();
-      
-      for (const product of allProducts as any[]) {
-        if (message.toLowerCase().includes(product.name.toLowerCase())) {
-          recommendedProducts.push({
-            id: product.id,
-            name: product.name,
-            brand: product.brand,
-          });
-        }
-      }
-    }
-
-    return {
-      message,
-      recommendedProducts: recommendedProducts.length > 0 ? recommendedProducts : undefined,
-      userProfile,
-      modelUsed: "sonnet",
-      toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
-    };
   }
 
   /**
@@ -377,7 +182,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
     try {
       const response = await this.client!.messages.create({
         model: this.model,
-        max_tokens: 512, // 1024'ten düşürüldü - maliyet optimizasyonu
+        max_tokens: 1024,
         temperature: 0.1, // Düşük sıcaklık = tutarlı cevaplar
         messages: [{ role: "user", content: prompt }],
       });
@@ -441,7 +246,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON array, başka bir şey yazm
     try {
       const response = await this.client!.messages.create({
         model: this.model,
-        max_tokens: 512, // 1024'ten düşürüldü - maliyet optimizasyonu
+        max_tokens: 1024,
         temperature: 0.1, // Düşük sıcaklık = tutarlı cevaplar
         messages: [{ role: "user", content: prompt }],
       });
@@ -484,7 +289,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
     try {
       const response = await this.client!.messages.create({
         model: this.model,
-        max_tokens: 512, // 1024'ten düşürüldü - maliyet optimizasyonu
+        max_tokens: 1024,
         temperature: 0.1, // Düşük sıcaklık = tutarlı cevaplar
         messages: [{ role: "user", content: prompt }],
       });
@@ -1642,7 +1447,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         }
       }
 
-      // Kendisi için mi hediye mi tespiti
+      // Hediye tespiti
       if (
         msg.includes("kendim") ||
         msg.includes("kendime") ||
@@ -1655,6 +1460,7 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
           profile.collectedInfo.push("purpose"); // hasPurpose kontrolü için
         }
       } else if (
+        msg.includes("sevgilim") ||
         msg.includes("hediye") ||
         msg.includes("doğum günü") ||
         msg.includes("yıldönümü") ||
@@ -1663,7 +1469,6 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         profile.isForGift = true;
         if (!profile.collectedInfo.includes("Amaç: Hediye")) {
           profile.collectedInfo.push("Amaç: Hediye");
-          profile.collectedInfo.push("purpose"); // hasPurpose kontrolü için
         }
       }
 
@@ -1705,11 +1510,18 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
    */
   private generateProfilingQuestion(
     profile: UserProfile,
-    requiredInfoCount: number
+    questionCount: number
   ): string | null {
-    // MİNİMUM 3 BİLGİ TOPLANMADAN ÖNERİ YAPMA!
-    // requiredInfoCount = kaç gerekli bilgi toplandı (0-4 arası)
-    if (requiredInfoCount >= 3 || profile.profilingComplete) {
+    // Maksimum 4 profilleme sorusu (daha derin konuşma)
+    if (questionCount >= 4 || profile.profilingComplete) {
+      return null;
+    }
+
+    // Kaç bilgi toplandı?
+    const collectedCount = profile.collectedInfo.length;
+
+    // 3+ bilgi varsa profilleme tamamlandı sayılır
+    if (collectedCount >= 3) {
       return null;
     }
 
@@ -1733,21 +1545,12 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
     const randomEmpathy =
       empathyPhrases[Math.floor(Math.random() * empathyPhrases.length)];
 
-    // Hangi bilgiler eksik?
-    const hasPurpose = profile.collectedInfo.includes("purpose") || 
-                       profile.collectedInfo.includes("giftRecipient") ||
-                       profile.isForGift !== undefined;
-    const hasGender = profile.gender !== undefined;
-    const hasOccasion = profile.occasion !== undefined || 
-                        profile.collectedInfo.includes("occasion") ||
-                        profile.collectedInfo.includes("usage");
-    const hasStyle = profile.intensity !== undefined || 
-                     profile.collectedInfo.includes("style") ||
-                     profile.collectedInfo.includes("preferredNotes") ||
-                     (profile.preferredNotes && profile.preferredNotes.length > 0);
-
-    // SORU 1: Kendisi mi hediye mi? (purpose)
-    if (!hasPurpose) {
+    // SORU 1: Kendisi mi hediye mi?
+    if (
+      !profile.isForGift &&
+      profile.isForGift === undefined &&
+      collectedCount === 0
+    ) {
       const purposeQuestions = [
         "Kendine mi arıyorsun, yoksa birine özel bir hediye mi planlıyorsun? 🎁",
         "Bu koku kendin için mi olacak, yoksa sevdiklerine sürpriz mi yapmak istiyorsun? 💝",
@@ -1757,31 +1560,8 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       ];
     }
 
-    // SORU 2: Kullanım zamanı/ortamı (occasion) - CİNSİYETTEN ÖNCE SOR!
-    // Çünkü cinsiyet bilgisi zaten "erkek parfümü" gibi cümlelerden alınabiliyor
-    if (!hasOccasion) {
-      const occasionQuestions = [
-        `${randomTransition} ${randomEmpathy}Bu kokuyu ne zaman kullanmayı düşünüyorsun? Günlük mü, yoksa özel anlar için mi? 🌙`,
-        `${randomTransition} Günlük kullanım için mi arıyorsun, yoksa özel geceler için mi?`,
-        `${randomTransition} Ne tür bir ortamda kullanacaksın? İş, sosyal ortam, randevu...? ✨`,
-      ];
-      return occasionQuestions[
-        Math.floor(Math.random() * occasionQuestions.length)
-      ];
-    }
-
-    // SORU 3: Koku tarzı/yoğunluğu (style) - EN ÖNEMLİ SORU!
-    if (!hasStyle) {
-      const styleQuestions = [
-        `${randomTransition} Peki ne tür kokular hoşuna gider - taze ve ferah mi, yoksa ağır ve karizmatik mi?`,
-        `${randomTransition} Taze ve canlandırıcı bir koku mu tercih edersin, yoksa yoğun ve iz bırakan mı?`,
-        `${randomTransition} Hafif çiçeksi/narenciye mi seversin, yoksa odunsu/baharatlı mı? 💫`,
-      ];
-      return styleQuestions[Math.floor(Math.random() * styleQuestions.length)];
-    }
-
-    // SORU 4: Cinsiyet bilgisi yoksa sor (genellikle zaten alınmış olur)
-    if (!hasGender) {
+    // SORU 2: Cinsiyet bilgisi yoksa sor
+    if (!profile.gender) {
       const genderQuestions = profile.isForGift
         ? [
             `${randomTransition} ${randomEmpathy}Hediye alacağın kişi erkek mi kadın mı?`,
@@ -1794,6 +1574,28 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       return genderQuestions[
         Math.floor(Math.random() * genderQuestions.length)
       ];
+    }
+
+    // SORU 3: Kullanım ortamı yoksa sor
+    if (!profile.occasion) {
+      const occasionQuestions = [
+        `${randomTransition} Bu kokuyu ne zaman kullanmayı düşünüyorsun? Günlük mü, iş için mi, yoksa özel geceler için mi? 🌙`,
+        `${randomTransition} Günlük kullanım için mi, yoksa özel anlar için mi arıyorsun?`,
+        `${randomTransition} Ne tür bir ortamda kullanacak? Ofis, parti, randevu...? ✨`,
+      ];
+      return occasionQuestions[
+        Math.floor(Math.random() * occasionQuestions.length)
+      ];
+    }
+
+    // SORU 4: Tarz/yoğunluk (opsiyonel, 2 bilgi varsa sor)
+    if (collectedCount === 2 && !profile.intensity) {
+      const styleQuestions = [
+        `${randomTransition} Peki ne tür bir his arıyorsun - ferah ve hafif mi, yoğun ve iz bırakan mı?`,
+        `${randomTransition} Taze ve canlandırıcı bir koku mu, sarmalayıcı ve sıcak mı?`,
+        `${randomTransition} Kendini nasıl hissettirmek istiyorsun - enerjik mi, gizemli mi, romantik mi? 💫`,
+      ];
+      return styleQuestions[Math.floor(Math.random() * styleQuestions.length)];
     }
 
     // Yeterli bilgi toplandı, profilleme tamamlandı
@@ -1919,14 +1721,17 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       ]);
 
       // 1. GÜVENLİK KONTROLLERİ - 3 aşamalı küfür sistemi
-      const securityCheck = this.checkSecurity(question, userProfile.profanityCount);
-      
+      const securityCheck = this.checkSecurity(
+        question,
+        userProfile.profanityCount
+      );
+
       if (!securityCheck.isAllowed) {
         // Küfür tespit edildiyse, sayacı güncelle
         if (securityCheck.isProfanity) {
           userProfile.profanityCount = (userProfile.profanityCount || 0) + 1;
         }
-        
+
         return {
           message: securityCheck.response,
           userProfile,
@@ -1970,28 +1775,21 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       // 5. Sorudan intent çıkar
       const intent = this.extractIntent(question);
 
-      // 6. Profilleme kontrolü - MİNİMUM 4 BİLGİ OLMADAN ÖNERİ YAPMA!
+      // 6. Profilleme kontrolü - 2+ bilgi varsa öneriye geç
       const collectedInfoCount = userProfile.collectedInfo.length;
-      
-      // Gerekli bilgiler: gender, purpose (kendine/hediye), occasion (günlük/özel), style (taze/ağır)
-      const hasGender = userProfile.collectedInfo.includes("gender") || userProfile.gender;
-      const hasPurpose = userProfile.collectedInfo.includes("purpose") || userProfile.collectedInfo.includes("giftRecipient");
-      const hasOccasion = userProfile.collectedInfo.includes("occasion") || userProfile.collectedInfo.includes("usage");
-      const hasStyle = userProfile.collectedInfo.includes("style") || userProfile.collectedInfo.includes("preferredNotes");
-      
-      const requiredInfoCount = [hasGender, hasPurpose, hasOccasion, hasStyle].filter(Boolean).length;
-      const hasEnoughInfo = requiredInfoCount >= 3 || userProfile.profilingComplete;
+      const hasEnoughInfo =
+        collectedInfoCount >= 2 || userProfile.profilingComplete;
 
       // Profilleme aşaması - SADECE yeterli bilgi yoksa soru sor
-      // ÖNEMLİ: isRecommendationRequest olsa bile profilleme yap!
       if (
         !hasEnoughInfo &&
         !intent.productName &&
-        !intent.isListRequest
+        !intent.isListRequest &&
+        !intent.isRecommendationRequest
       ) {
         const profilingQuestion = this.generateProfilingQuestion(
           userProfile,
-          requiredInfoCount // Toplanan gerekli bilgi sayısını kullan
+          collectedInfoCount // messageCount yerine toplanan bilgi sayısını kullan
         );
         if (profilingQuestion) {
           return {
@@ -2146,70 +1944,33 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         }
       }
 
-      // 10. RAG ile zengin yanıt üret
-      // Kullanıcı sorusuna göre en alakalı ürünleri bul
-      let ragContext: RAGContext;
-      
-      try {
-        // Önce profil bazlı RAG dene
-        if (userProfile.collectedInfo.length > 0) {
-          ragContext = await recommendByProfile({
-            gender: userProfile.gender,
-            season: userProfile.season,
-            occasion: userProfile.occasion,
-            personality: userProfile.personality,
-            preferredNotes: userProfile.preferredNotes,
-            intensity: userProfile.intensity,
-            ageGroup: userProfile.ageGroup,
-          });
-        } else {
-          // Soru bazlı RAG
-          ragContext = await retrieveRelevantProducts(question, 8, {
-            gender: userProfile.gender === "kadın" ? "female" : 
-                   userProfile.gender === "erkek" ? "male" : undefined,
-          });
-        }
-      } catch (ragError) {
-        console.warn("RAG error, falling back to direct query:", ragError);
-        // Fallback: direkt DB sorgusu
-        const allPerfumes = await Product.find({ status: "active" })
-          .limit(15)
-          .select("name notes gender price characteristics brand description")
-          .lean();
+      // 10. AI ile zengin yanıt üret (son çare)
+      const allPerfumes = await Product.find({ status: "active" })
+        .limit(15)
+        .select("name notes gender price characteristics brand description")
+        .lean();
 
-        ragContext = {
-          products: allPerfumes.map((p: any) => ({
-            id: p.id,
-            name: p.name,
-            brand: p.brand,
-            description: p.description,
-            notes: p.notes || [],
-            characteristics: p.characteristics || [],
-            gender: p.gender,
-            category: p.category,
-            price: p.price,
-            ml: p.ml,
-            ageRange: p.ageRange,
-            score: 0.5,
-          })),
-          totalFound: allPerfumes.length,
-          query: question,
-          contextText: "",
-        };
-      }
+      const genderFilter =
+        userProfile.gender === "kadın"
+          ? ["female", "unisex"]
+          : ["male", "unisex"];
 
-      // RAG context'ten parfüm bilgisi oluştur
-      const perfumeContext = ragContext.products
+      const filteredPerfumes = allPerfumes.filter((p) =>
+        genderFilter.includes(p.gender)
+      );
+
+      // Detaylı ürün bilgisi oluştur - AI'ın SADECE bu bilgileri kullanması için
+      const perfumeContext = filteredPerfumes
         .map((p) => {
           const notes =
-            p.notes.length > 0
+            Array.isArray(p.notes) && p.notes.length > 0
               ? `Notalar: ${p.notes.join(", ")}`
               : "Notalar: BİLİNMİYOR (bu parfümün notalarını UYDURMA!)";
           const chars =
-            p.characteristics.length > 0
+            Array.isArray(p.characteristics) && p.characteristics.length > 0
               ? `Özellikler: ${p.characteristics.join(", ")}`
               : "";
-          return `- ${p.name} (${p.brand}): ${notes}${chars ? `. ${chars}` : ""}. Fiyat: ${p.price} TL`;
+          return `- ${p.name}: ${notes}${chars ? `. ${chars}` : ""}`;
         })
         .join("\n");
 
