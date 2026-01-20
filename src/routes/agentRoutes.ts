@@ -133,15 +133,19 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
     console.log("🤖 Getting Librarian Agent...");
     const librarian = getLibrarianAgent();
 
-    console.log("💬 Calling askAboutPerfume with conversation history...");
-    const response = await librarian.askAboutPerfume(
-      message,
-      perfumeId,
-      validHistory
-    );
+    // HİBRİT SİSTEM: Soru karmaşıklığına göre model seç
+    console.log("💬 Calling askWithHybridSystem...");
+    const response = await librarian.askWithHybridSystem(message, validHistory);
 
     const duration = Date.now() - startTime;
-    console.log(`✅ Chat response generated in ${duration}ms`);
+    const modelEmoji = response.modelUsed === "sonnet" ? "🚀" : "⚡";
+    console.log(
+      `✅ ${modelEmoji} Chat response generated in ${duration}ms (${
+        response.modelUsed
+      }${
+        response.toolsUsed ? `, tools: ${response.toolsUsed.join(", ")}` : ""
+      })`
+    );
 
     res.status(200).json({
       success: true,
@@ -149,6 +153,8 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
         message: response.message,
         recommendedProducts: response.recommendedProducts || [],
         userProfile: response.userProfile,
+        modelUsed: response.modelUsed,
+        toolsUsed: response.toolsUsed,
         timestamp: new Date().toISOString(),
       },
     });
