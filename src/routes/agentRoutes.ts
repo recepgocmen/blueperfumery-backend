@@ -115,7 +115,7 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
               m &&
               typeof m.role === "string" &&
               typeof m.content === "string" &&
-              ["user", "assistant"].includes(m.role)
+              ["user", "assistant"].includes(m.role),
           )
           .slice(-10) // Son 10 mesaj
       : [];
@@ -144,7 +144,7 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
         response.modelUsed
       }${
         response.toolsUsed ? `, tools: ${response.toolsUsed.join(", ")}` : ""
-      })`
+      })`,
     );
 
     res.status(200).json({
@@ -152,6 +152,7 @@ router.post("/chat", async (req: Request, res: Response): Promise<void> => {
       data: {
         message: response.message,
         recommendedProducts: response.recommendedProducts || [],
+        options: response.options || [],
         userProfile: response.userProfile,
         modelUsed: response.modelUsed,
         toolsUsed: response.toolsUsed,
