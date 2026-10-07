@@ -156,9 +156,8 @@ Konu dışı sorularda:
 export class LibrarianAgent {
   private client: Anthropic | null = null;
   // HİBRİT SİSTEM: İki model
-  private haikuModel: string = "claude-3-5-haiku-20241022"; // Basit sorular için (ucuz)
-  private sonnetModel: string = "claude-sonnet-4-5-20250929"; // Karmaşık sorular için (güçlü) - Güncel Sonnet 4.5
-  private model: string = this.haikuModel; // Varsayılan (legacy uyumluluk)
+  private sonnetModel: string = "claude-sonnet-5-5";
+  private model: string = this.sonnetModel;
   private apiKeyMissing: boolean = false;
 
   constructor() {
@@ -404,7 +403,6 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       const response = await this.client!.messages.create({
         model: this.model,
         max_tokens: 1024,
-        temperature: 0.1, // Düşük sıcaklık = tutarlı cevaplar
         messages: [{ role: "user", content: prompt }],
       });
 
@@ -468,7 +466,6 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON array, başka bir şey yazm
       const response = await this.client!.messages.create({
         model: this.model,
         max_tokens: 1024,
-        temperature: 0.1, // Düşük sıcaklık = tutarlı cevaplar
         messages: [{ role: "user", content: prompt }],
       });
 
@@ -511,7 +508,6 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       const response = await this.client!.messages.create({
         model: this.model,
         max_tokens: 1024,
-        temperature: 0.1, // Düşük sıcaklık = tutarlı cevaplar
         messages: [{ role: "user", content: prompt }],
       });
 
@@ -924,9 +920,18 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         response:
           "Tabii ki, hoş geldin! 🌸 Koleksiyonumuzda çiçeksi, odunsu, taze ve oryantal parfümler var. Seni tanımak isterim - erkek parfümü mü kadın parfümü mü ilgini çekiyor?",
         nextOptions: [
-          { text: "Erkek parfümleri 🧔", value: "Erkek parfümlerine bakmak istiyorum" },
-          { text: "Kadın parfümleri 💄", value: "Kadın parfümlerine bakmak istiyorum" },
-          { text: "Hepsini göster 🌟", value: "Tüm parfümleri görmek istiyorum" },
+          {
+            text: "Erkek parfümleri 🧔",
+            value: "Erkek parfümlerine bakmak istiyorum",
+          },
+          {
+            text: "Kadın parfümleri 💄",
+            value: "Kadın parfümlerine bakmak istiyorum",
+          },
+          {
+            text: "Hepsini göster 🌟",
+            value: "Tüm parfümleri görmek istiyorum",
+          },
         ],
       },
       // Erkek parfümü seçenekleri
@@ -941,9 +946,15 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         response:
           "Tamam, anladım! ✨ Erkek parfümleri için harika seçeneklerimiz var. Bu kokuyu ne zaman kullanmayı düşünüyorsun?",
         nextOptions: [
-          { text: "Günlük kullanım ☀️", value: "Günlük kullanım için arıyorum" },
+          {
+            text: "Günlük kullanım ☀️",
+            value: "Günlük kullanım için arıyorum",
+          },
           { text: "İş/Ofis 💼", value: "İş ve ofis ortamı için arıyorum" },
-          { text: "Özel geceler 🌙", value: "Özel geceler ve randevular için arıyorum" },
+          {
+            text: "Özel geceler 🌙",
+            value: "Özel geceler ve randevular için arıyorum",
+          },
         ],
       },
       // Kadın parfümü seçenekleri
@@ -958,9 +969,15 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         response:
           "Süper! 💎 Kadın parfümlerinde çok özel seçenekler var. Bu kokuyu ne zaman kullanmayı düşünüyorsun?",
         nextOptions: [
-          { text: "Günlük kullanım ☀️", value: "Günlük kullanım için arıyorum" },
+          {
+            text: "Günlük kullanım ☀️",
+            value: "Günlük kullanım için arıyorum",
+          },
           { text: "İş/Ofis 💼", value: "İş ve ofis ortamı için arıyorum" },
-          { text: "Özel geceler 🌙", value: "Özel geceler ve randevular için arıyorum" },
+          {
+            text: "Özel geceler 🌙",
+            value: "Özel geceler ve randevular için arıyorum",
+          },
         ],
       },
       // Unisex seçeneği
@@ -974,8 +991,14 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         response:
           "Harika seçim! 🌟 Unisex parfümler hem zarif hem de çok yönlü. Bu kokuyu ne zaman kullanmayı düşünüyorsun?",
         nextOptions: [
-          { text: "Günlük kullanım ☀️", value: "Günlük kullanım için arıyorum" },
-          { text: "Her ortamda 🌟", value: "Her ortamda kullanabileceğim bir şey istiyorum" },
+          {
+            text: "Günlük kullanım ☀️",
+            value: "Günlük kullanım için arıyorum",
+          },
+          {
+            text: "Her ortamda 🌟",
+            value: "Her ortamda kullanabileceğim bir şey istiyorum",
+          },
         ],
       },
       // Kullanım zamanı seçenekleri
@@ -989,9 +1012,18 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         response:
           "Güzel! 💫 Günlük kullanım için ideal kokular... Ne tür bir his arıyorsun?",
         nextOptions: [
-          { text: "Ferah ve hafif 🌊", value: "Ferah ve hafif bir koku istiyorum" },
-          { text: "Taze ve enerjik ✨", value: "Taze ve enerjik bir koku istiyorum" },
-          { text: "Sıcak ve sarmalayıcı 🍂", value: "Sıcak ve sarmalayıcı bir koku istiyorum" },
+          {
+            text: "Ferah ve hafif 🌊",
+            value: "Ferah ve hafif bir koku istiyorum",
+          },
+          {
+            text: "Taze ve enerjik ✨",
+            value: "Taze ve enerjik bir koku istiyorum",
+          },
+          {
+            text: "Sıcak ve sarmalayıcı 🍂",
+            value: "Sıcak ve sarmalayıcı bir koku istiyorum",
+          },
         ],
       },
       {
@@ -1010,8 +1042,14 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         response:
           "Profesyonel ve şık! 💼 Ofis için mükemmel kokular... Ne tür bir his arıyorsun?",
         nextOptions: [
-          { text: "Ferah ve hafif 🌊", value: "Ferah ve hafif bir koku istiyorum" },
-          { text: "Zarif ve sofistike 💎", value: "Zarif ve sofistike bir koku istiyorum" },
+          {
+            text: "Ferah ve hafif 🌊",
+            value: "Ferah ve hafif bir koku istiyorum",
+          },
+          {
+            text: "Zarif ve sofistike 💎",
+            value: "Zarif ve sofistike bir koku istiyorum",
+          },
         ],
       },
       {
@@ -1025,9 +1063,18 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         response:
           "Romantik ve etkileyici! 🌙 Özel geceler için... Ne tür bir his arıyorsun?",
         nextOptions: [
-          { text: "Yoğun ve iz bırakan 🔥", value: "Yoğun ve iz bırakan bir koku istiyorum" },
-          { text: "Gizemli ve çekici 🌹", value: "Gizemli ve çekici bir koku istiyorum" },
-          { text: "Sıcak ve sarmalayıcı 🍂", value: "Sıcak ve sarmalayıcı bir koku istiyorum" },
+          {
+            text: "Yoğun ve iz bırakan 🔥",
+            value: "Yoğun ve iz bırakan bir koku istiyorum",
+          },
+          {
+            text: "Gizemli ve çekici 🌹",
+            value: "Gizemli ve çekici bir koku istiyorum",
+          },
+          {
+            text: "Sıcak ve sarmalayıcı 🍂",
+            value: "Sıcak ve sarmalayıcı bir koku istiyorum",
+          },
         ],
       },
       {
@@ -1040,8 +1087,14 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         response:
           "Çok yönlü bir koku! 🌟 Her ortama uyum sağlayan parfümler... Ne tür bir his arıyorsun?",
         nextOptions: [
-          { text: "Ferah ve hafif 🌊", value: "Ferah ve hafif bir koku istiyorum" },
-          { text: "Dengeli ve zarif 💎", value: "Dengeli ve zarif bir koku istiyorum" },
+          {
+            text: "Ferah ve hafif 🌊",
+            value: "Ferah ve hafif bir koku istiyorum",
+          },
+          {
+            text: "Dengeli ve zarif 💎",
+            value: "Dengeli ve zarif bir koku istiyorum",
+          },
         ],
       },
       // Koku tarzı seçenekleri - BUNLAR PROFİLLEMEYİ TAMAMLAR
@@ -1054,7 +1107,10 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
           "ferah",
           "hafif",
         ],
-        profileUpdate: { intensity: "hafif", preferredNotes: ["ferah", "aquatik"] },
+        profileUpdate: {
+          intensity: "hafif",
+          preferredNotes: ["ferah", "aquatik"],
+        },
         response: "PROFILING_COMPLETE", // Özel işaretçi - öneri yap
       },
       {
@@ -1066,7 +1122,10 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
           "ağır",
           "güçlü",
         ],
-        profileUpdate: { intensity: "yoğun", preferredNotes: ["odunsu", "baharatlı"] },
+        profileUpdate: {
+          intensity: "yoğun",
+          preferredNotes: ["odunsu", "baharatlı"],
+        },
         response: "PROFILING_COMPLETE",
       },
       {
@@ -1077,7 +1136,10 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
           "sıcak",
           "sarmalayıcı",
         ],
-        profileUpdate: { intensity: "orta", preferredNotes: ["amber", "vanilya", "sıcak"] },
+        profileUpdate: {
+          intensity: "orta",
+          preferredNotes: ["amber", "vanilya", "sıcak"],
+        },
         response: "PROFILING_COMPLETE",
       },
       {
@@ -1089,7 +1151,10 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
           "taze ferah",
           "taze",
         ],
-        profileUpdate: { intensity: "hafif", preferredNotes: ["narenciye", "yeşil", "ferah"] },
+        profileUpdate: {
+          intensity: "hafif",
+          preferredNotes: ["narenciye", "yeşil", "ferah"],
+        },
         response: "PROFILING_COMPLETE",
       },
       {
@@ -1100,7 +1165,10 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
           "gizemli",
           "çekici",
         ],
-        profileUpdate: { intensity: "yoğun", preferredNotes: ["oryantal", "amber", "misk"] },
+        profileUpdate: {
+          intensity: "yoğun",
+          preferredNotes: ["oryantal", "amber", "misk"],
+        },
         response: "PROFILING_COMPLETE",
       },
       {
@@ -1112,7 +1180,10 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
           "sofistike",
           "dengeli",
         ],
-        profileUpdate: { intensity: "orta", preferredNotes: ["çiçeksi", "odunsu"] },
+        profileUpdate: {
+          intensity: "orta",
+          preferredNotes: ["çiçeksi", "odunsu"],
+        },
         response: "PROFILING_COMPLETE",
       },
       // Tüm parfümleri göster
@@ -1141,8 +1212,8 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
       return text
         .toLowerCase()
         .trim()
-        .replace(/\s+/g, ' ') // Çoklu boşlukları tek boşluğa çevir
-        .replace(/[.,!?;:'"()]/g, ''); // Noktalama işaretlerini kaldır
+        .replace(/\s+/g, " ") // Çoklu boşlukları tek boşluğa çevir
+        .replace(/[.,!?;:'"()]/g, ""); // Noktalama işaretlerini kaldır
     };
 
     const normalizedQ = normalizeText(q);
@@ -1150,7 +1221,10 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
     for (const reply of quickReplies) {
       for (const pattern of reply.patterns) {
         const normalizedPattern = normalizeText(pattern);
-        if (normalizedQ === normalizedPattern || normalizedQ.includes(normalizedPattern)) {
+        if (
+          normalizedQ === normalizedPattern ||
+          normalizedQ.includes(normalizedPattern)
+        ) {
           return {
             isQuickReply: true,
             response: reply.response,
@@ -2423,10 +2497,12 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         // Profil güncellemelerini uygula
         if (quickReplyCheck.profileUpdates) {
           Object.assign(userProfile, quickReplyCheck.profileUpdates);
-          
+
           // collectedInfo'yu güncelle
           if (quickReplyCheck.profileUpdates.isForGift !== undefined) {
-            const infoText = quickReplyCheck.profileUpdates.isForGift ? "Amaç: Hediye" : "Amaç: Kendisi için";
+            const infoText = quickReplyCheck.profileUpdates.isForGift
+              ? "Amaç: Hediye"
+              : "Amaç: Kendisi için";
             if (!userProfile.collectedInfo.includes(infoText)) {
               userProfile.collectedInfo.push(infoText);
             }
@@ -2439,10 +2515,10 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
           }
           if (quickReplyCheck.profileUpdates.occasion) {
             const occasionMap: Record<string, string> = {
-              'günlük': 'Günlük',
-              'iş': 'İş',
-              'gece': 'Gece/Özel',
-              'özel': 'Özel gün'
+              günlük: "Günlük",
+              iş: "İş",
+              gece: "Gece/Özel",
+              özel: "Özel gün",
             };
             const occasionText = `Kullanım: ${occasionMap[quickReplyCheck.profileUpdates.occasion] || quickReplyCheck.profileUpdates.occasion}`;
             if (!userProfile.collectedInfo.includes(occasionText)) {
@@ -2455,7 +2531,10 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
               userProfile.collectedInfo.push(intensityText);
             }
           }
-          if (quickReplyCheck.profileUpdates.preferredNotes && quickReplyCheck.profileUpdates.preferredNotes.length > 0) {
+          if (
+            quickReplyCheck.profileUpdates.preferredNotes &&
+            quickReplyCheck.profileUpdates.preferredNotes.length > 0
+          ) {
             for (const note of quickReplyCheck.profileUpdates.preferredNotes) {
               const noteText = `Nota tercihi: ${note}`;
               if (!userProfile.collectedInfo.includes(noteText)) {
@@ -2469,22 +2548,31 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
         if (quickReplyCheck.response === "PROFILING_COMPLETE") {
           // Profilleme tamamlandı - DİREKT ÖNERİ YAP!
           userProfile.profilingComplete = true;
-          
+
           // Profil bazlı öneri al
-          const recommendations = await this.getRecommendationsForProfile(userProfile);
-          
+          const recommendations =
+            await this.getRecommendationsForProfile(userProfile);
+
           if (recommendations.length > 0) {
             const recText = recommendations
               .map((p) => {
-                const poetricDesc = this.generatePoetricDescription(p, userProfile);
+                const poetricDesc = this.generatePoetricDescription(
+                  p,
+                  userProfile,
+                );
                 return `• **${p.name}** (${p.brand})\n  ${poetricDesc}`;
               })
               .join("\n\n");
 
             // Profil özeti oluştur
-            const transitions = ["Harika seçim! 💎", "Tam senlik! ✨", "Mükemmel tercih! 🌟"];
-            const randomTransition = transitions[Math.floor(Math.random() * transitions.length)];
-            
+            const transitions = [
+              "Harika seçim! 💎",
+              "Tam senlik! ✨",
+              "Mükemmel tercih! 🌟",
+            ];
+            const randomTransition =
+              transitions[Math.floor(Math.random() * transitions.length)];
+
             let profileSummary = randomTransition;
             if (userProfile.collectedInfo.length > 0) {
               const infoText = userProfile.collectedInfo
@@ -2514,19 +2602,33 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
             .select("name brand gender")
             .lean();
 
-          const maleProducts = sampleProducts.filter((p: any) => p.gender === "male" || p.gender === "unisex").slice(0, 3);
-          const femaleProducts = sampleProducts.filter((p: any) => p.gender === "female" || p.gender === "unisex").slice(0, 3);
+          const maleProducts = sampleProducts
+            .filter((p: any) => p.gender === "male" || p.gender === "unisex")
+            .slice(0, 3);
+          const femaleProducts = sampleProducts
+            .filter((p: any) => p.gender === "female" || p.gender === "unisex")
+            .slice(0, 3);
 
           let productList = "**Erkek Parfümleri:**\n";
-          productList += maleProducts.map((p: any) => `• ${p.name} (${p.brand})`).join("\n");
+          productList += maleProducts
+            .map((p: any) => `• ${p.name} (${p.brand})`)
+            .join("\n");
           productList += "\n\n**Kadın Parfümleri:**\n";
-          productList += femaleProducts.map((p: any) => `• ${p.name} (${p.brand})`).join("\n");
+          productList += femaleProducts
+            .map((p: any) => `• ${p.name} (${p.brand})`)
+            .join("\n");
 
           return {
             message: `İşte koleksiyonumuzdan bir kesit: ✨\n\n${productList}\n\nSeni daha iyi tanımak isterim - hangi tarafa daha çok ilgi duyuyorsun?`,
             options: [
-              { text: "Erkek parfümleri 🧔", value: "Erkek parfümlerine bakmak istiyorum" },
-              { text: "Kadın parfümleri 💄", value: "Kadın parfümlerine bakmak istiyorum" },
+              {
+                text: "Erkek parfümleri 🧔",
+                value: "Erkek parfümlerine bakmak istiyorum",
+              },
+              {
+                text: "Kadın parfümleri 💄",
+                value: "Kadın parfümlerine bakmak istiyorum",
+              },
             ],
             userProfile,
           };
@@ -2593,12 +2695,14 @@ Lütfen şu JSON formatında yanıt ver (sadece JSON, başka bir şey yazma):
 
       // Mesaj sayısını da kontrol et - EN AZ 3 MESAJ OLMADAN ÖNERİ YAPMA!
       // conversationHistory sadece önceki mesajları içerir, şu anki dahil değil
-      const messageCount = conversationHistory.filter(m => m.role === "user").length + 1; // +1 şu anki mesaj
-      
+      const messageCount =
+        conversationHistory.filter((m) => m.role === "user").length + 1; // +1 şu anki mesaj
+
       // EN AZ 3 BİLGİ VE 3 MESAJ OLMADAN ÖNERİ YAPMA!
       // Sadece profilingComplete true ise (checkQuickReply'dan gelirse) hemen öneri yap
       const hasEnoughInfo =
-        (requiredInfoCount >= 3 && messageCount >= 3) || userProfile.profilingComplete;
+        (requiredInfoCount >= 3 && messageCount >= 3) ||
+        userProfile.profilingComplete;
 
       // Profilleme aşaması - SADECE yeterli bilgi yoksa soru sor
       // ÖNEMLİ: isRecommendationRequest olsa bile profilleme yap!
@@ -2859,7 +2963,6 @@ Mira (samimi, betimleyici dille, max 3 cümle):`;
       const response = await this.client!.messages.create({
         model: this.model,
         max_tokens: 250,
-        temperature: 0.1, // Düşük sıcaklık = tutarlı, halüsinasyonsuz cevaplar
         messages: [{ role: "user", content: prompt }],
       });
 
