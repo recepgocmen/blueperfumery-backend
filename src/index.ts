@@ -50,6 +50,7 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    maxAge: 7200, // Preflight cache (Chrome üst sınırı 2 saat) - her POST öncesi OPTIONS tekrarlanmasın
   })
 );
 app.use(morgan("dev")); // Request logging
